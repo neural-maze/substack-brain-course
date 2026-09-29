@@ -227,4 +227,12 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
       <a href="https://theneuralmaze.substack.com/">The Neural Maze Newsletter</a>
     </td>
   </tr>
+  <tr>
+    <td align="center"><img src="https://github.com/hedrergudene.png" width="100" style="border-radius:50%;"/></td>
+    <td>
+      <strong>Antonio Zarauz Moreno | Cognitive-AI R&D / AI Engineer</strong><br />
+      <i>Doesn't build AI wrappers — builds the infrastructure that makes them profitable, from PoC to thousands of concurrent users.</i><br /><br />
+      <a href="https://www.linkedin.com/in/antonio-zarauz-moreno/">LinkedIn</a>
+    </td>
+  </tr>
 </table>

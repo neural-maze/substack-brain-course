@@ -26,7 +26,7 @@
 
 This isn't your typical "call an LLM and print the result" tutorial. Most tutorials stop at the happy path. This course is about the layer around it, the one that decides whether a system survives a real Tuesday: **durable execution, retries that don't double-bill an API, idempotency and evaluation built from real failures**.
 
-We're building a **living knowledge base**: it reads technical newsletters, keeps itself fresh, and (in the coming weeks) answers questions with citations.
+We are building the **Substack Brain**, a knowledge base that reads technical newsletters, keeps itself fresh, and (in the coming weeks) answers questions with citations.
 
 In week 1, you'll build a system capable of:
 

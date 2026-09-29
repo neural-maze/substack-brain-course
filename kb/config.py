@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     lab_port: int = 8000
 
     # --- Fetching ---
-    user_agent: str = "living-kb/0.1 (+https://github.com/neural-maze/substack-brain-course)"
+    user_agent: str = "substack-brain/0.1 (+https://github.com/neural-maze/substack-brain-course)"
     request_timeout_s: float = 15.0
     max_article_bytes: int = 5_000_000
 

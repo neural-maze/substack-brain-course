@@ -1,6 +1,5 @@
 """Every SQL statement in the project lives here. Functions and FastAPI endpoints
-(MCP tools from week 3 on) call these helpers; they never build SQL themselves
-(substack-brain-python skill).
+call these helpers; they never build SQL themselves.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-name: living-kb
+name: substack-brain
 
 services:
   postgres:

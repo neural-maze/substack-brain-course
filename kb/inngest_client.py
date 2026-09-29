@@ -68,7 +68,7 @@ class CostCaptureMiddleware(inngest.Middleware):
 
 
 client = inngest.Inngest(
-    app_id="living-kb",
+    app_id="substack-brain",
     is_production=not settings.inngest_dev,
     middleware=[CostCaptureMiddleware],
 )

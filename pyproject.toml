@@ -1,7 +1,7 @@
 [project]
 name = "substack-brain-course"
 version = "0.1.0"
-description = "A living knowledge base built from technical newsletters — companion code for the harness-engineering course."
+description = "Substack Brain: a knowledge base built from technical newsletters, with durable ingestion powered by Inngest."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

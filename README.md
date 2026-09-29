@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🧠 The Substack Brain 🧠</h1>
+  <h1>The Substack Brain</h1>
   <h3>Turn your favourite newsletters into a knowledge base your AI tools can query, using Inngest, Postgres & pgvector</h3>
 </div>
 

@@ -6,7 +6,7 @@
 </br>
 
 <p align="center">
-    <img src="static/course_overview.png" alt="The Substack Brain architecture" width="700">
+    <a href="static/course_overview.png"><img src="static/course_overview.png" alt="The Substack Brain architecture" width="450"></a>
 </p>
 
 
@@ -114,7 +114,7 @@ Each week builds on the previous one, so follow them in order!
 ## Week 1: Your first durable pipeline
 
 <p align="center">
-    <img src="static/week_1_architecture_detailed.png" alt="The Substack Brain, week 1 architecture" width="900">
+    <a href="static/week_1_architecture_detailed.png"><img src="static/week_1_architecture_detailed.png" alt="The Substack Brain, week 1 architecture" width="500"></a>
 </p>
 
 **Goal**: Build a pipeline that survives being killed mid-task, and search what it ingested.

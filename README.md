@@ -76,26 +76,18 @@ Each week, you'll unlock **a new chapter of the journey**. We start absurdly sim
 
 * 🧾 A Substack article that walks through the concepts and code in detail
 * 💻 A new batch of code pushed directly to this repo
-* 🎥 A YouTube video that explores the topic
+* 🎥 A video that explores the topic
 
 Here's what the weeks look like 👇
 
-| Week | You'll build | Article | Code | YouTube Video |
-|:----:|:-------------|:-------:|:----:|:-------------:|
-| <div align="center">1</div> | A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Coming soon | [Week 1](docs/week-1.md) | Coming soon |
-| <div align="center">2</div> | Backfilling 100-300 articles, hybrid retrieval, a first LLM answer with citations | Coming soon | Coming soon | Coming soon |
-| <div align="center">3</div> | A freshness poller and an MCP server | Coming soon | Coming soon | Coming soon |
-| <div align="center">4</div> | Claim extraction into a Memgraph graph | Coming soon | Coming soon | Coming soon |
-| <div align="center">5</div> | An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
-| <div align="center">6</div> | A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |
-
-----:|:-------------|:----------------------------|:-------:|:----:|
-| <div align="center">1</div> | A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Durable execution: steps, retries, memoization. Kill the process mid-task and watch it resume for free. | Coming soon | [Week 1](docs/week-1.md) |
-| <div align="center">2</div> | Backfilling 100-300 articles, hybrid retrieval, a first LLM answer with citations | Flow control at scale, and turning two disagreeing rankers into one trustworthy answer | Coming soon | Coming soon |
-| <div align="center">3</div> | A freshness poller and an MCP server | Modeling "this content changed" honestly, and giving an agent a stable interface | Coming soon | Coming soon |
-| <div align="center">4</div> | Claim extraction into a Memgraph graph | Structured knowledge extraction | Coming soon | Coming soon |
-| <div align="center">5</div> | An evaluation suite built from your system's failures | Error analysis *before* metrics | Coming soon | Coming soon |
-| <div align="center">6</div> | A bounded research agent, a weekly digest and a production deploy | Agent loops with hard caps | Coming soon | Coming soon |
+| Week | 🛠️ You'll build | 🧾 Article | 💻 Code | 🎥 Video |
+|:----:|:----------------|:----------:|:-------:|:--------:|
+| <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Coming soon | [Week 1](docs/week-1.md) | Coming soon |
+| <div align="center">2</div> | 📚 Backfilling 100-300 articles, hybrid retrieval, a first LLM answer with citations | Coming soon | Coming soon | Coming soon |
+| <div align="center">3</div> | 🔄 A freshness poller and an MCP server | Coming soon | Coming soon | Coming soon |
+| <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph | Coming soon | Coming soon | Coming soon |
+| <div align="center">5</div> | 📊 An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
+| <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |
 
 ---
 

@@ -1,0 +1,53 @@
+name: living-kb
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-substack_brain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-substack_brain_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-substack_brain}
+    ports:
+      - "5433:5432"
+    volumes:
+      - kb_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-substack_brain} -d ${POSTGRES_DB:-substack_brain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Teaching/inspection only — nothing in kb/ depends on this. Browse tables,
+  # run ad hoc SQL, and see what ingestion actually wrote. See docs/week-1.md.
+  # ADMINER_DEFAULT_SERVER pre-fills the login form's Server field with
+  # "postgres" — Adminer's own default is the wrong value "db" for this
+  # compose file, which is the #1 way to get stuck on the login screen.
+  # The System dropdown still defaults to MySQL/MariaDB and can't be preset
+  # via env var in the official image — must be switched to PostgreSQL by hand.
+  adminer:
+    image: adminer:6.0.1
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+
+  inngest-dev:
+    image: inngest/inngest:v1.45.1
+    restart: unless-stopped
+    # LAB_PORT is the port kb/main.py's FastAPI app (uvicorn) binds to on the
+    # host; the dev server reaches it via host.docker.internal.
+    command: >
+      inngest dev
+      -u http://host.docker.internal:${LAB_PORT:-8000}/api/inngest
+    ports:
+      - "8288:8288"
+      - "8289:8289"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  kb_postgres_data:

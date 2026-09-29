@@ -1,12 +1,12 @@
 <div align="center">
-  <h1>🧠 Substack Brain 🧠</h1>
+  <h1>🧠 The Substack Brain 🧠</h1>
   <h3>Turn your favourite newsletters into a knowledge base your AI tools can query, using Inngest, Postgres & pgvector</h3>
 </div>
 
 </br>
 
 <p align="center">
-    <img src="static/course_overview.png" alt="Substack Brain architecture" width="700">
+    <img src="static/course_overview.png" alt="The Substack Brain architecture" width="700">
 </p>
 
 
@@ -26,7 +26,7 @@
 
 This isn't your typical "call an LLM and print the result" tutorial. Most tutorials stop at the happy path. This course is about the layer around it, the one that decides whether a system survives a real Tuesday: **durable execution, retries that don't double-bill an API, idempotency and evaluation built from real failures**.
 
-We are building the **Substack Brain**, a knowledge base that reads technical newsletters, keeps itself fresh, and (in the coming weeks) answers questions with citations.
+We are building **The Substack Brain**, a knowledge base that reads technical newsletters, keeps itself fresh, and (in the coming weeks) answers questions with citations.
 
 In week 1, you'll build a system capable of:
 
@@ -114,7 +114,7 @@ Each week builds on the previous one, so follow them in order!
 ## Week 1: Your first durable pipeline
 
 <p align="center">
-    <img src="static/week_1_architecture.png" alt="Week 1 architecture" width="900">
+    <img src="static/week_1_architecture_detailed.png" alt="The Substack Brain, week 1 architecture" width="900">
 </p>
 
 **Goal**: Build a pipeline that survives being killed mid-task, and search what it ingested.

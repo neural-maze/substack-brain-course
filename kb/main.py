@@ -21,7 +21,7 @@ from kb.inngest_client import client
 from kb.retrieval import dense, sparse
 from kb.schemas.events import PUBLICATION_ADDED, PublicationAdded
 
-app = FastAPI(title="Substack Brain")
+app = FastAPI(title="The Substack Brain")
 
 inngest.fast_api.serve(app, client, FUNCTIONS)
 

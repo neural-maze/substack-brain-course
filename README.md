@@ -1,12 +1,12 @@
 <div align="center">
   <h1>The Substack Brain</h1>
-  <h3>Turn your favourite newsletters into a knowledge base your AI tools can query, using Inngest, Postgres & pgvector</h3>
+  <h3>Build a second brain from your favourite newsletters, one your AI tools can search, cite and reason over</h3>
 </div>
 
 </br>
 
 <p align="center">
-    <a href="static/course_overview.png"><img src="static/course_overview.png" alt="The Substack Brain architecture" width="450"></a>
+    <a href="static/course_overview.png"><img src="static/course_overview.png" alt="The Substack Brain architecture" width="750"></a>
 </p>
 
 
@@ -24,18 +24,23 @@
 
 ## Course Overview
 
-This isn't your typical "call an LLM and print the result" tutorial. Most tutorials stop at the happy path. This course is about the layer around it, the one that decides whether a system survives a real Tuesday: **durable execution, retries that don't double-bill an API, idempotency and evaluation built from real failures**.
+This isn't your typical "call an LLM and print the result" tutorial. Most tutorials stop at the happy path. This course is about everything around it, the layer that decides whether a system survives a real Tuesday: **durable execution, retries that don't double-bill an API, idempotency, and evaluation built from real failures**.
 
-We are building **The Substack Brain**, a knowledge base that reads technical newsletters, keeps itself fresh, and (in the coming weeks) answers questions with citations.
+So instead of a demo, we're building a real product: **The Substack Brain**, a knowledge base that turns technical newsletters into something your AI tools can query. It reads the articles, keeps itself fresh, understands who said what, and answers with citations.
 
-In week 1, you'll build a system capable of:
+By the end of this course, you'll have a system capable of:
 
-* 📬 Read articles from a real newsletter's RSS feed
-* 🛡️ Only ingest from an allowlist of publications (`publications.yaml`)
-* ⚙️ Run the whole pipeline as **durable Inngest steps** that resume after a crash
-* 🧩 Split articles into overlapping chunks and embed them with OpenAI
-* 🗄️ Store text, vectors and full-text search in a single Postgres database
-* 🔎 Search it two ways: sparse (BM25) and dense (pgvector cosine similarity)
+* 📬 Ingesting newsletters straight from their RSS feeds, safely, from an allowlist
+* ⚙️ Running every pipeline as **durable Inngest steps** that survive crashes, retries and rate limits
+* 🔎 Searching with **hybrid retrieval**: BM25 and dense vectors fused into one ranking, inside Postgres
+* 💬 Answering questions with **citations** you can click and verify
+* ⏱️ Staying fresh with a poller that costs almost nothing when nothing has changed
+* 🕸️ Extracting who said what into a **Memgraph** knowledge graph
+* 🔌 Plugging into **Claude Code, Cursor and Codex** through an MCP server
+* 📊 Measuring quality with **evals built from your own failures**, not vibes
+* 🤖 Running a bounded research agent and a weekly digest, deployed for real
+
+We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Week 1 is available now.**
 
 Excited? Let's get started!
 

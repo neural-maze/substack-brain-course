@@ -4,7 +4,7 @@ Each step below is retried and memoized independently — the heart of the
 week-1 lesson: a failure in `embed` re-runs only `embed`, never re-fetching
 or re-parsing the article. Re-sending the same event produces zero new rows
 (upserts throughout: `articles` by `canonical_id`, `passages` by
-`(article_id, chunk_index)`).
+`(article_id, chunk_index)`), so retrying a failed article is always safe.
 """
 
 from __future__ import annotations
@@ -34,7 +34,6 @@ from kb.sources.parser import parse_html
     fn_id="ingest-article",
     trigger=inngest.TriggerEvent(event=ARTICLE_DISCOVERED),
     concurrency=[inngest.Concurrency(key="event.data.publication_id", limit=3)],
-    idempotency="event.data.canonical_id",
     retries=3,
 )
 async def ingest_article(ctx: inngest.Context) -> dict[str, object]:

@@ -34,7 +34,7 @@ Trigger your first ingestion with plain HTTP:
 ```bash
 curl -X POST localhost:8000/publications \
   -H "Content-Type: application/json" \
-  -d '{"feed_url": "https://theneuralmaze.substack.com/feed"}'
+  -d '{"feed_url": "https://theneuralmaze.com/feed"}'
 # → {"event_id": "...", "trace_url": "http://localhost:8288/event/...", "status": "queued"}
 
 curl localhost:8000/jobs/<event_id>

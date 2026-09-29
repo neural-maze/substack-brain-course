@@ -36,6 +36,12 @@ async def get_publication_by_slug(session: AsyncSession, slug: str) -> Publicati
     ).scalar_one_or_none()
 
 
+async def get_existing_canonical_ids(session: AsyncSession, canonical_ids: list[str]) -> set[str]:
+    """Which of these articles are already stored?"""
+    stmt = select(Article.canonical_id).where(Article.canonical_id.in_(canonical_ids))
+    return set((await session.execute(stmt)).scalars())
+
+
 async def list_publications(session: AsyncSession) -> list[Publication]:
     return list((await session.execute(select(Publication))).scalars())
 

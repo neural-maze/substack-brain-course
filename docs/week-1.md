@@ -9,7 +9,7 @@ command below has actually been run against this exact repo state. Where
 something surprised us while building it, we kept it in, because that's
 what makes this a lesson instead of a demo.
 
-The main [`README.md`](../README.md) has the short version of setup. This
+The main `[README.md](../README.md)` has the short version of setup. This
 file is the full walkthrough.
 
 ## What you're building
@@ -75,11 +75,12 @@ cp .env.example .env
 ```
 
 Open `.env` and fill in:
+
 - `ANTHROPIC_API_KEY` — not used in this week, you can leave it empty.
 - `OPENAI_API_KEY` — used by the `embed` step and by the dense
-  search endpoint's query embedding. Without a funded account, ingestion will
-  fail at exactly that step (see the real story in the "What actually
-  happened" section below — it happened to us).
+search endpoint's query embedding. Without a funded account, ingestion will
+fail at exactly that step (see the real story in the "What actually
+happened" section below — it happened to us).
 
 Everything else in `.env.example` has a sane local default; you don't need
 to touch it.
@@ -100,11 +101,13 @@ Here's what's actually in `infra/docker-compose.yml`, and why each thing is
 there — not just "these are the containers," but what job each one does in
 the architecture:
 
-| Service | Port | Why it's here |
-|---|---|---|
-| **postgres** (pgvector) | 5433 | Owns *all* operational state: article text, chunk embeddings, BM25 search vectors, job tracking, cost logs. One database for text + vectors + full-text search means no separate vector-DB to keep in sync. |
-| **adminer** | 8081 | A tiny (≈20MB) web UI for browsing Postgres directly. Not part of the product — purely so you can *see* what ingestion actually wrote, without memorizing `psql` syntax. |
-| **inngest-dev** | 8288 (UI/API), 8289 (connect) | The orchestration engine itself. Runs every `kb/functions/*.py` function, retries failed steps, and gives you a UI to inspect every run. |
+
+| Service                 | Port                          | Why it's here                                                                                                                                                                                               |
+| ----------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **postgres** (pgvector) | 5433                          | Owns *all* operational state: article text, chunk embeddings, BM25 search vectors, job tracking, cost logs. One database for text + vectors + full-text search means no separate vector-DB to keep in sync. |
+| **adminer**             | 8081                          | A tiny (≈20MB) web UI for browsing Postgres directly. Not part of the product — purely so you can *see* what ingestion actually wrote, without memorizing `psql` syntax.                                    |
+| **inngest-dev**         | 8288 (UI/API), 8289 (connect) | The orchestration engine itself. Runs every `kb/functions/*.py` function, retries failed steps, and gives you a UI to inspect every run.                                                                    |
+
 
 The FastAPI app (`kb/main.py`) is **not** a container — `make start` runs it
 directly on your machine (via `uv run uvicorn`) so file changes reload
@@ -116,6 +119,7 @@ Once it's up, confirm everything is actually talking to everything else:
 ```bash
 curl localhost:8000/health
 ```
+
 ```json
 {"status": "ok", "database": "ok", "inngest": "ok", "articles": 0, "passages": 0}
 ```
@@ -123,8 +127,8 @@ curl localhost:8000/health
 Zero articles is correct — you haven't ingested anything yet.
 
 FastAPI generates interactive API docs for free from the endpoints in
-`kb/main.py` — open **http://localhost:8000/docs** (Swagger UI) or
-**http://localhost:8000/redoc**. Every `curl` command in this guide has an
+`kb/main.py` — open **[http://localhost:8000/docs](http://localhost:8000/docs)** (Swagger UI) or
+**[http://localhost:8000/redoc](http://localhost:8000/redoc)**. Every `curl` command in this guide has an
 exact equivalent there: expand an endpoint, click **Try it out**, fill in
 the fields, **Execute**. If you'd rather click than type a request body by
 hand, use this instead of `curl` for the rest of the guide — same requests,
@@ -133,16 +137,18 @@ endpoint (including `/search`'s `mode` enum) without reading the source.
 
 ## Step 3 — Look inside Postgres (Adminer)
 
-Open **http://localhost:8081**. Two things trip people up on this login
+Open **[http://localhost:8081](http://localhost:8081)**. Two things trip people up on this login
 screen, so watch for them:
 
-| Field | Value | Watch out for |
-|---|---|---|
-| System | **PostgreSQL** | Defaults to "MySQL / MariaDB" — you must change this dropdown yourself. |
-| Server | `postgres` | Already pre-filled correctly (`ADMINER_DEFAULT_SERVER` in `docker-compose.yml`) — it's the Docker Compose service name, not `localhost`, since Adminer is itself a container on the same Docker network. Adminer's own default here is `db`, which doesn't exist in this project — that's the #1 way to get stuck on this screen. |
-| Username | `POSTGRES_USER` from your `.env` (`substack_brain` by default) | |
-| Password | `POSTGRES_PASSWORD` from your `.env` (`substack_brain_pw` by default) | |
-| Database | `POSTGRES_DB` from your `.env` (`substack_brain` by default) | |
+
+| Field    | Value                                                                 | Watch out for                                                                                                                                                                                                                                                                                                                     |
+| -------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| System   | **PostgreSQL**                                                        | Defaults to "MySQL / MariaDB" — you must change this dropdown yourself.                                                                                                                                                                                                                                                           |
+| Server   | `postgres`                                                            | Already pre-filled correctly (`ADMINER_DEFAULT_SERVER` in `docker-compose.yml`) — it's the Docker Compose service name, not `localhost`, since Adminer is itself a container on the same Docker network. Adminer's own default here is `db`, which doesn't exist in this project — that's the #1 way to get stuck on this screen. |
+| Username | `POSTGRES_USER` from your `.env` (`substack_brain` by default)        |                                                                                                                                                                                                                                                                                                                                   |
+| Password | `POSTGRES_PASSWORD` from your `.env` (`substack_brain_pw` by default) |                                                                                                                                                                                                                                                                                                                                   |
+| Database | `POSTGRES_DB` from your `.env` (`substack_brain` by default)          |                                                                                                                                                                                                                                                                                                                                   |
+
 
 You'll see six empty tables: `publications`, `articles`, `passages`,
 `cursors`, `jobs`, `costs`. Keep this tab open — you'll watch rows appear in
@@ -152,16 +158,16 @@ the better "aha" moments of week 1: watching a passage with a real
 
 ## Step 4 — Meet the Inngest dev server
 
-Open **http://localhost:8288**. Three tabs matter:
+Open **[http://localhost:8288](http://localhost:8288)**. Three tabs matter:
 
 - **Functions** — lists every function this app registered (`add-publication`,
-  `ingest-article`). Click one to see its configuration: triggers,
-  concurrency limits, retry policy.
+`ingest-article`). Click one to see its configuration: triggers,
+concurrency limits, retry policy.
 - **Runs** — every execution, past and present, with a status
-  (`Running`/`Completed`/`Failed`) and a full step-by-step timeline once you
-  trigger something.
+(`Running`/`Completed`/`Failed`) and a full step-by-step timeline once you
+trigger something.
 - **Events** — every event this app has ever sent or received, raw JSON
-  payload included.
+payload included.
 
 Nothing has run yet, so these will be empty — that's expected. Come back
 here after Step 5.
@@ -171,8 +177,9 @@ here after Step 5.
 ```bash
 curl -X POST localhost:8000/publications \
   -H "Content-Type: application/json" \
-  -d '{"feed_url": "https://theneuralmaze.substack.com/feed"}'
+  -d '{"feed_url": "https://theneuralmaze.com/feed"}'
 ```
+
 ```json
 {"event_id": "01...", "trace_url": "http://localhost:8288/event/01...", "status": "queued"}
 ```
@@ -186,9 +193,11 @@ feed, picking the 5 most recent posts), then 5 separate `ingest-article`
 runs fan out, each with its own 7-step timeline.
 
 Poll for completion:
+
 ```bash
 curl localhost:8000/jobs/<event_id from above>
 ```
+
 ```json
 {"status": "completed", "articles_done": 5, "articles_total": 5, "run_status": "Completed", "failures": [], "trace_url": "..."}
 ```
@@ -196,33 +205,18 @@ curl localhost:8000/jobs/<event_id from above>
 Flip back to your Adminer tab and actually look at what landed, not just
 that something did:
 
-1. Click **`publications`** in the left sidebar, then **Select data**. One
-   row: the slug, name, feed URL and homepage the loader derived from the
+1. Click `publications` in the left sidebar, then **Select data**. One
+  row: the slug, name, feed URL and homepage the loader derived from the
    feed you posted.
-2. Click **`articles`** → **Select data**. Five rows. Click into one —
-   `canonical_id` is the deduped, normalized form of the URL (Step 1's `?
-   ` params and trailing slashes stripped); `content_hash` is the sha256 of
+2. Click `articles` → **Select data**. Five rows. Click into one —
+  `canonical_id` is the deduped, normalized form of the URL (Step 1's `?`   params and trailing slashes stripped); `content_hash` is the sha256 of
    the cleaned text.
-3. Click **`passages`** → **Select data**. More rows than articles — each
-   article split into several chunks (Step 6 explains why). Click a row's
+3. Click `passages` → **Select data**. More rows than articles — each
+  article split into several chunks (Step 6 explains why). Click a row's
    `embedding` cell: Adminer renders the actual 1536-number vector inline.
    That's the real output of a real OpenAI API call, not a placeholder.
 4. Use the **SQL command** tab (top nav) for anything a plain table browse
-   can't show easily, for example:
-   ```sql
-   SELECT a.title, a.author, count(p.id) AS passage_count
-   FROM articles a JOIN passages p ON p.article_id = a.id
-   GROUP BY a.id, a.title, a.author
-   ORDER BY a.published_at DESC;
-   ```
-   ```sql
-   -- Confirm every passage actually got an embedding (should equal the
-   -- passage_count above for every row — a NULL here means the embed step
-   -- never ran for that passage, worth knowing before Step 8's kill demo).
-   SELECT count(*) FILTER (WHERE embedding IS NOT NULL) AS embedded,
-          count(*) AS total
-   FROM passages;
-   ```
+  can't show easily, for example:
 
 ## Step 6 — How chunking actually works
 
@@ -264,6 +258,7 @@ Prove both work, and notice that they don't agree.
 ```bash
 curl "localhost:8000/search?q=agents&mode=sparse"
 ```
+
 This is **BM25** — Postgres's `tsvector` full-text search, ranking passages
 by keyword relevance (`kb/retrieval/sparse.py` → `kb/db/queries.py`'s
 `search_passages_bm25`). No LLM, no Inngest run, sub-second.
@@ -271,6 +266,7 @@ by keyword relevance (`kb/retrieval/sparse.py` → `kb/db/queries.py`'s
 ```bash
 curl "localhost:8000/search?q=agents&mode=dense"
 ```
+
 This is **dense retrieval** — your query is embedded with the same model
 used for ingestion, then compared against every passage's embedding by
 cosine similarity via pgvector (`kb/retrieval/dense.py` →
@@ -290,10 +286,10 @@ This is the signature demonstration of the whole course, and it's worth
 doing with your own hands once:
 
 1. Trigger an ingest for an article you haven't already ingested (any of
-   the other posts in the feed works — check `articles` in Adminer for
+  the other posts in the feed works — check `articles` in Adminer for
    which canonical ids you already have).
 2. Watch the terminal running `make start`. The moment you see log lines
-   for the `embed` step, hit **Ctrl+C**. (Ctrl+C correctly signals the whole
+  for the `embed` step, hit **Ctrl+C**. (Ctrl+C correctly signals the whole
    process group; killing by a guessed PID from another terminal is less
    reliable with `--reload` mode's separate reloader/worker processes.)
 3. Run `make start` again.
@@ -311,34 +307,31 @@ and after adding credits, re-sending the same event resumed cleanly with
 nothing upstream of `embed` re-running. A real provider outage demonstrated
 the mechanism for free — you don't have to take our word for the guarantee.
 
-## Step 9 — Confirm idempotency
+## Step 9 — Re-adding a publication, and retrying failures
 
 ```bash
 # re-send the same POST /publications call with the same feed_url
 curl -X POST localhost:8000/publications \
   -H "Content-Type: application/json" \
-  -d '{"feed_url": "https://theneuralmaze.substack.com/feed"}'
+  -d '{"feed_url": "https://theneuralmaze.com/feed"}'
 ```
-Check Adminer's `articles`/`passages` row counts before and after — they
-should be **identical**. Two things cooperate to guarantee this: `articles`
-upserts on `canonical_id` and `passages` upserts on `(article_id,
-chunk_index)` (so even a full re-run is a no-op), *and* `ingest-article` has
-`idempotency="event.data.canonical_id"` configured at the Inngest level,
-which prevents a duplicate run from even being created within a 24-hour
-window. Worth knowing: that second mechanism blocks a *retry* too, not just
-a duplicate — if a run permanently fails, re-sending its triggering event
-won't create a new attempt until that window passes.
 
-**If you're iterating locally** (re-triggering `POST /publications` for the
-same feed over and over while poking at the system) and at some point new
-articles just... stop appearing, with no error anywhere: this is that same
-24-hour window, working exactly as designed, not something broken. The
-feed's latest 5 articles have the same `canonical_id`s every time, so
-re-triggering them repeatedly hits the rate limit almost immediately.
-Since the local Inngest Dev Server keeps this state only in memory (no
-volume in `docker-compose.yml`), `docker compose -f infra/docker-compose.yml
-restart inngest-dev` resets it — fine for local dev, not something you'd do
-against Inngest Cloud in production.
+Check Adminer's `articles`/`passages` row counts before and after — they
+should be **identical**. Two things cooperate to guarantee this:
+
+1. `add-publication` checks which of the feed's latest 5 articles are already
+  in `articles`, and only emits `kb/article.discovered` for the ones that
+   aren't. Articles that already succeeded are skipped, so nothing is fetched
+   or embedded twice.
+2. If a run did happen anyway, `articles` upserts on `canonical_id` and
+  `passages` upserts on `(article_id, chunk_index)`, so it's a no-op.
+
+The same check gives you a retry for free. If one article's `ingest-article`
+run failed for good (say `embed` ran out of credits and exhausted its
+retries), that article has no row in `articles`. Fix the problem, send the same
+`POST /publications` again, and only the failed article is re-emitted — the
+ones that worked are left alone. `GET /jobs/{event_id}` on the new event
+reports `completed` once all 5 are stored.
 
 ## Verification checklist
 

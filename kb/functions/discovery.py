@@ -1,8 +1,10 @@
 """kb/publication.added -> discovery.
 
 Fetches the feed, upserts the publication, takes the most recent
-`discovery_limit` entries , and fans out
-`kb/article.discovered` with `via="rss"`.
+`discovery_limit` entries, and fans out
+`kb/article.discovered` with `via="rss"` for every entry that isn't stored yet.
+Re-adding a publication therefore retries exactly the articles whose
+`ingest-article` run failed, and skips the ones that already succeeded.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ import uuid
 import inngest
 
 from kb.config import settings
-from kb.db.queries import create_job, upsert_publication
+from kb.db.queries import create_job, get_existing_canonical_ids, upsert_publication
 from kb.db.session import get_session
 from kb.inngest_client import client
 from kb.schemas.events import (
@@ -78,12 +80,15 @@ async def add_publication(ctx: inngest.Context) -> dict[str, int]:
             )
             for entry in entries
         ]
-        if discovered:
-            # One batched send, not one call per article (references/inngest-python.md §3).
+        async with get_session() as session:
+            stored = await get_existing_canonical_ids(session, [d.canonical_id for d in discovered])
+        missing = [d for d in discovered if d.canonical_id not in stored]
+        if missing:
+            # One batched send, not one call per article.
             await client.send(
                 [
                     inngest.Event(name=ARTICLE_DISCOVERED, data=d.model_dump(mode="json"))
-                    for d in discovered
+                    for d in missing
                 ]
             )
         async with get_session() as session:
@@ -95,6 +100,6 @@ async def add_publication(ctx: inngest.Context) -> dict[str, int]:
                 publication_id=uuid.UUID(publication_id),
             )
             await session.commit()
-        return {"count": len(discovered)}
+        return {"count": len(discovered), "emitted": len(missing)}
 
     return await ctx.step.run("discover-and-emit", _discover_and_emit)

@@ -26,12 +26,12 @@
 
 This isn't your typical "call an LLM and print the result" tutorial. Most tutorials stop at the happy path. This course is about everything around it, the layer that decides whether a system survives a real Tuesday: **durable execution, retries that don't double-bill an API, idempotency, and evaluation built from real failures**.
 
-So instead of a demo, we're building a real product: **The Substack Brain**, a knowledge base that turns technical newsletters into something your AI tools can query. It reads the articles, keeps itself fresh, understands who said what, and answers with citations.
+So instead of a demo, we're building a real product: **The Substack Brain**, a knowledge base that turns technical newsletters into something your AI tools can query. It reads the articles, keeps itself fresh, understands who said what, and answers with citations. All of it runs on [Inngest](https://inngest.link/neural-maze-gh), the durable orchestration engine that makes it survive real-world failures.
 
 By the end of this course, you'll have a system capable of:
 
 * 📬 Ingesting newsletters straight from their RSS feeds, safely, from an allowlist
-* ⚙️ Running every pipeline as **durable Inngest steps** that survive crashes, retries and rate limits
+* ⚙️ Running every pipeline as **durable [Inngest](https://inngest.link/neural-maze-gh) steps** that survive crashes, retries and rate limits
 * 🔎 Searching with **hybrid retrieval**: BM25 and dense vectors fused into one ranking, inside Postgres
 * 💬 Answering questions with **citations** you can click and verify
 * ⏱️ Staying fresh with a poller that costs almost nothing when nothing has changed

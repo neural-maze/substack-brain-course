@@ -53,9 +53,12 @@ async def fetch_article(url: str) -> FetchedPage:
     if not parser.can_fetch(settings.user_agent, url):
         raise FetchError(f"robots.txt disallows fetching {url!r}")
 
-    async with httpx.AsyncClient(
-        headers={"User-Agent": settings.user_agent}, timeout=settings.request_timeout_s
-    ) as client, client.stream("GET", url, follow_redirects=True) as response:
+    async with (
+        httpx.AsyncClient(
+            headers={"User-Agent": settings.user_agent}, timeout=settings.request_timeout_s
+        ) as client,
+        client.stream("GET", url, follow_redirects=True) as response,
+    ):
         response.raise_for_status()
         body = bytearray()
         async for chunk in response.aiter_bytes():

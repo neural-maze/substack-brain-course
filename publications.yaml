@@ -3,4 +3,22 @@ publications:
     name: The Neural Maze
     feed_url: https://theneuralmaze.com/feed
     homepage: https://www.theneuralmaze.com
+    archive_urls:
+      - https://theneuralmaze.substack.com
     notes: Owned by the course author. Week 1 corpus.
+
+  - slug: decoding-ai
+    name: Decoding AI (Paul Iusztin)
+    feed_url: https://www.decodingai.com/feed
+    homepage: https://www.decodingai.com
+    archive_urls:
+      - https://decodingai.substack.com
+    notes: Production LLM systems, full-stack AI engineering and MLOps. Added in week 2.
+
+  - slug: ahead-of-ai
+    name: Ahead of AI (Sebastian Raschka)
+    feed_url: https://magazine.sebastianraschka.com/feed
+    homepage: https://magazine.sebastianraschka.com
+    archive_urls:
+      - https://sebastianraschka.substack.com
+    notes: AI research papers, LLM architectures and fine-tuning. Added in week 2.

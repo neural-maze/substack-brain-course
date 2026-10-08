@@ -12,7 +12,16 @@ from openai import AsyncOpenAI
 
 from kb.config import settings
 
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client: AsyncOpenAI | None = None
+
+
+def _get_client() -> AsyncOpenAI:
+    # Created on first use, not at import time, so modules that import this one
+    # (and the tests) load fine without OPENAI_API_KEY.
+    global _client
+    if _client is None:
+        _client = AsyncOpenAI(api_key=settings.openai_api_key)
+    return _client
 
 
 async def embed_texts(texts: list[str]) -> dict:
@@ -31,7 +40,7 @@ async def embed_texts(texts: list[str]) -> dict:
     total_tokens = 0
     for start in range(0, len(texts), settings.embedding_batch_size):
         batch = texts[start : start + settings.embedding_batch_size]
-        response = await _client.embeddings.create(
+        response = await _get_client().embeddings.create(
             input=batch,
             model=settings.embedding_model,
             dimensions=settings.embedding_dimensions,

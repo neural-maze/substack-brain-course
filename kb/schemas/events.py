@@ -3,7 +3,7 @@
 Every event has a name constant and a Pydantic model. Producers build the
 model, `.model_dump(mode="json")` it into `inngest.Event(data=...)`, and
 consumers validate with `Model.model_validate(ctx.event.data)` on the first
-line of the handler. """
+line of the handler."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from pydantic import BaseModel
 PUBLICATION_ADDED = "kb/publication.added"
 ARTICLE_DISCOVERED = "kb/article.discovered"
 ARTICLE_INGESTED = "kb/article.ingested"
+ANSWER_PRODUCED = "kb/answer.produced"
 
 DiscoverySource = Literal["rss", "backfill", "manual"]
 
@@ -45,3 +46,10 @@ class ArticleIngested(BaseModel):
     article_id: UUID
     content_hash: str
     passage_count: int
+
+
+class AnswerProduced(BaseModel):
+    """POST /ask (fire-and-forget) -> evaluators (week 5). Points at a stored snapshot."""
+
+    snapshot_id: str
+    retriever_variant: str

@@ -40,7 +40,7 @@ By the end of this course, you'll have a system capable of:
 * 📊 Measuring quality with **evals built from your own failures**, not vibes
 * 🤖 Running a bounded research agent and a weekly digest, deployed for real
 
-We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Week 1 is available now.**
+We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 and 2 are available now.**
 
 Excited? Let's get started!
 
@@ -88,7 +88,7 @@ Here's what the weeks look like 👇
 | Week | 🛠️ You'll build | 🧾 Article | 💻 Code | 🎥 Video |
 |:----:|:----------------|:----------:|:-------:|:--------:|
 | <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Coming soon | [Week 1](docs/week-1.md) | Coming soon |
-| <div align="center">2</div> | 📚 Backfilling 100-300 articles, hybrid retrieval, a first LLM answer with citations | Coming soon | Coming soon | Coming soon |
+| <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | Coming soon | [Week 2](docs/week-2.md) | Coming soon |
 | <div align="center">3</div> | 🔄 A freshness poller and an MCP server | Coming soon | Coming soon | Coming soon |
 | <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph | Coming soon | Coming soon | Coming soon |
 | <div align="center">5</div> | 📊 An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
@@ -190,8 +190,43 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
 - `publications.yaml`: the allowlist of feeds the pipeline may ingest
 - `alembic/`: database migrations
 - `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server
-- `docs/week-1.md`: the step-by-step guide
+- `docs/week-1.md`, `docs/week-2.md`: the step-by-step guides
+- `scripts/replay_backfill.py`: replays a backfill to prove ingestion is idempotent
 - `tests/`: the simple tests
+
+---
+
+## Week 2: Three newsletters, flow control and answers with citations
+
+**Goal**: Ingest three newsletters at once without hammering their servers or your OpenAI quota, let urgent articles skip the queue, and answer questions with hybrid retrieval and inline citations.
+
+### Steps:
+
+1. 📖 **Read the guide**: [`docs/week-2.md`](docs/week-2.md) explains the backfill, the three flow-control knobs on `ingest-article` (concurrency, throttle, priority), Reciprocal Rank Fusion and the context snapshots.
+2. 🔑 **Add your Anthropic key**: `POST /ask` uses `ANTHROPIC_API_KEY` to write the answer. Without it, `/ask` still runs retrieval and returns the passages.
+3. 🚀 **Start the system** with `make start`. It applies this week's migration (the `snapshots` table) automatically.
+4. 📥 **Backfill three newsletters at once**:
+
+   ```bash
+   curl -X POST localhost:8000/publications -H "Content-Type: application/json" -d '{"feed_url": "https://theneuralmaze.com/feed"}'
+   curl -X POST localhost:8000/publications -H "Content-Type: application/json" -d '{"feed_url": "https://www.decodingai.com/feed"}'
+   curl -X POST localhost:8000/publications -H "Content-Type: application/json" -d '{"feed_url": "https://magazine.sebastianraschka.com/feed"}'
+   ```
+
+5. ⏩ **Jump the queue** while the backfills run:
+
+   ```bash
+   curl -X POST localhost:8000/articles -H "Content-Type: application/json" -d '{"url": "<a Neural Maze post URL>"}'
+   ```
+
+6. ❓ **Ask a question**:
+
+   ```bash
+   curl -X POST localhost:8000/ask -H "Content-Type: application/json" \
+     -d '{"question": "How do durable execution engines handle failure recovery?"}'
+   ```
+
+7. 🔁 **Prove replays are free**: `uv run python scripts/replay_backfill.py --verify`, then `--all`, then `--verify` again. Every count stays the same, including the number of embedding calls.
 
 ---
 

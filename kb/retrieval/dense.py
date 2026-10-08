@@ -1,5 +1,4 @@
-"""Dense (pgvector cosine-similarity) retrieval, called directly by `GET /search`.
-"""
+"""Dense (pgvector cosine-similarity) retrieval, called directly by `GET /search`."""
 
 from __future__ import annotations
 

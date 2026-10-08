@@ -1,5 +1,4 @@
-"""Sparse (BM25) retrieval, called directly by `GET /search`.
-"""
+"""Sparse (BM25) retrieval, called directly by `GET /search`."""
 
 from __future__ import annotations
 

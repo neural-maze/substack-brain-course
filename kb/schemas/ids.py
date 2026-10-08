@@ -7,6 +7,7 @@ manual ingestion) calls through them instead of building ids ad hoc.
 
 from __future__ import annotations
 
+import secrets
 from urllib.parse import urlsplit, urlunsplit
 
 
@@ -39,3 +40,10 @@ def canonical_id(publication_slug: str, url: str) -> str:
     post_slug = segments[-1]
     return f"pub:{publication_slug}:{post_slug}"
 
+
+def snapshot_id() -> str:
+    """`snap_<12 url-safe chars>`: the id of one answer produced by `POST /ask`.
+
+    It joins an answer with everything recorded about it later (scores, feedback).
+    """
+    return f"snap_{secrets.token_urlsafe(9)}"

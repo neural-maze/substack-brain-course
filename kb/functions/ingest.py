@@ -5,11 +5,24 @@ week-1 lesson: a failure in `embed` re-runs only `embed`, never re-fetching
 or re-parsing the article. Re-sending the same event produces zero new rows
 (upserts throughout: `articles` by `canonical_id`, `passages` by
 `(article_id, chunk_index)`), so retrying a failed article is always safe.
+
+Week 2 adds flow control, configured on the function itself so Inngest
+enforces it in its queue, before any of our code runs:
+
+- concurrency, keyed by publication: at most N articles per website at once;
+- throttle, global: at most N runs START per minute, to protect the OpenAI quota;
+- priority: manual submissions (`POST /articles`) jump ahead of backfill runs.
+
+There is deliberately no Inngest `idempotency` key. It would block re-sending
+the same article for 24h, which breaks week 1's "re-add the publication to
+retry the articles that failed". Duplicates are already prevented by the
+backfill's "skip what's stored" filter and by the upserts above.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import cast
 
 import inngest
 
@@ -33,7 +46,30 @@ from kb.sources.parser import parse_html
 @client.create_function(
     fn_id="ingest-article",
     trigger=inngest.TriggerEvent(event=ARTICLE_DISCOVERED),
-    concurrency=[inngest.Concurrency(key="event.data.publication_id", limit=3)],
+    # A separate limit for each publication, so we never hit one website with
+    # more than N requests at once, and one big backfill can't starve the others.
+    concurrency=[
+        inngest.Concurrency(
+            key="event.data.publication_id",
+            limit=settings.concurrency_per_publication,
+        )
+    ],
+    # No key: the OpenAI quota is shared by every publication, so the limit is too.
+    # Throttling limits run STARTS, not steps; embed_texts sends a whole article
+    # in one request, which keeps "runs per minute" close to "requests per minute".
+    throttle=inngest.Throttle(
+        limit=settings.ingest_runs_per_minute,
+        period=timedelta(minutes=1),
+    ),
+    # Priority is a time shift in seconds, not a rank: +600 schedules a manual run
+    # as if it had arrived 10 minutes earlier, and -600 pushes backfill runs 10
+    # minutes later, so a manual article gets up to 20 minutes of head start.
+    priority=inngest.Priority(
+        run=(
+            f"event.data.via == 'manual' ? {settings.priority_manual_s} "
+            f": {settings.priority_backfill_s}"
+        )
+    ),
     retries=3,
 )
 async def ingest_article(ctx: inngest.Context) -> dict[str, object]:
@@ -76,7 +112,7 @@ async def ingest_article(ctx: inngest.Context) -> dict[str, object]:
     embed_result = await ctx.step.run("embed", _embed)
 
     async def _persist() -> dict[str, object]:
-        embeddings = embed_result["embeddings"]
+        embeddings = cast("list[list[float]]", embed_result["embeddings"])
         async with get_session() as session:
             article_id = await upsert_article(
                 session,

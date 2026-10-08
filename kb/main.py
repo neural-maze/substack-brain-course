@@ -1,25 +1,39 @@
 """FastAPI app: serves Inngest functions, plus plain HTTP endpoints for
 ingestion and retrieval. Everything is triggered this way, the way
 Inngest's own docs describe: send an event, get a handle back, poll for status.
+
+Writes (`POST /publications`, `POST /articles`) only send an event and return.
+Reads (`GET /search`, `POST /ask`) never go through Inngest: they query
+Postgres directly, because someone is waiting for them.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 import httpx
 import inngest
 import inngest.fast_api
 from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel
 
 from kb.config import settings
-from kb.db.queries import get_job_status
+from kb.db.queries import get_job_status, upsert_publication
 from kb.db.session import get_session
 from kb.functions import FUNCTIONS
+from kb.functions.ask import ask_question
 from kb.health import check_health
 from kb.inngest_client import client
-from kb.retrieval import dense, sparse
-from kb.schemas.events import PUBLICATION_ADDED, PublicationAdded
+from kb.retrieval import dense, hybrid, sparse
+from kb.schemas.events import (
+    ARTICLE_DISCOVERED,
+    PUBLICATION_ADDED,
+    ArticleDiscovered,
+    PublicationAdded,
+)
+from kb.schemas.ids import canonical_id
+from kb.sources.allowlist import find_publication_for_url, load_publications
 
 app = FastAPI(title="The Substack Brain")
 
@@ -34,7 +48,7 @@ async def health() -> dict[str, Any]:
 @app.post("/publications")
 async def add_publication(payload: PublicationAdded) -> dict[str, Any]:
     """Kick off ingestion for one publication. The feed's host must already be
-    listed in `publications.yaml` — `add-publication` rejects anything else.
+    listed in `publications.yaml` — `backfill-publication` rejects anything else.
 
     Returns immediately with a handle; poll `GET /jobs/{event_id}` for progress.
     """
@@ -45,6 +59,59 @@ async def add_publication(payload: PublicationAdded) -> dict[str, Any]:
         "event_id": event_id,
         "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
         "status": "queued",
+    }
+
+
+class ArticleManual(BaseModel):
+    url: str
+    title: str | None = None
+
+
+@app.post("/articles")
+async def add_manual_article(payload: ArticleManual) -> dict[str, Any]:
+    """Ingest one article now, ahead of any queued backfill.
+
+    The event is tagged `via="manual"`, which `ingest-article`'s priority
+    expression turns into a +`priority_manual_s` time shift: Inngest schedules
+    the run as if it had arrived that many seconds earlier, so it takes the next
+    free slot for its publication. The URL's host must be in `publications.yaml`.
+    """
+    pub = find_publication_for_url(payload.url, load_publications())
+    if pub is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Article URL is outside the allowlist (publications.yaml): {payload.url!r}",
+        )
+
+    async with get_session() as session:
+        publication_id = await upsert_publication(
+            session,
+            slug=pub.slug,
+            name=pub.name,
+            feed_url=pub.feed_url,
+            homepage=pub.homepage,
+        )
+        await session.commit()
+
+    event = inngest.Event(
+        name=ARTICLE_DISCOVERED,
+        data=ArticleDiscovered(
+            canonical_id=canonical_id(pub.slug, payload.url),
+            publication_id=publication_id,
+            url=payload.url,
+            title=payload.title or "Manual ingestion",
+            # Only a fallback: the parse step uses the article's real date if it finds one.
+            published_at=datetime.now(UTC),
+            via="manual",
+        ).model_dump(mode="json"),
+    )
+    event_ids = await client.send(event)
+    event_id = event_ids[0]
+    return {
+        "event_id": event_id,
+        "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
+        "status": "queued",
+        "priority_offset_s": settings.priority_manual_s,
     }
 
 
@@ -95,13 +162,32 @@ async def job_status(event_id: str) -> dict[str, Any]:
 @app.get("/search")
 async def search(
     q: str,
-    mode: Literal["sparse", "dense"] = "sparse",
+    mode: Literal["hybrid", "sparse", "dense"] = "hybrid",
     limit: int = Query(default=5, ge=1, le=25),
 ) -> dict[str, Any]:
-    """A first, light look at retrieval — sparse (BM25) or dense (pgvector
-    cosine similarity), queried directly, no fusion and no LLM synthesis.
-    The point is that the two rank the same query differently.
+    """Search passages, no LLM. `hybrid` (the default from week 2) fuses full-text
+    and vector search with Reciprocal Rank Fusion; `sparse` and `dense` query one
+    engine each, so you can compare all three on the same query.
     """
     async with get_session() as session:
-        results = await (sparse if mode == "sparse" else dense).search(session, q, limit)
+        if mode == "hybrid":
+            results = await hybrid.search(session, q, limit)
+        elif mode == "sparse":
+            results = await sparse.search(session, q, limit)
+        else:
+            results = await dense.search(session, q, limit)
     return {"mode": mode, "results": results}
+
+
+class AskRequest(BaseModel):
+    question: str
+    limit: int | None = None
+
+
+@app.post("/ask")
+async def ask(payload: AskRequest) -> dict[str, Any]:
+    """Answer a question with inline citations. A fast read: it never creates an
+    Inngest run. It saves a snapshot and sends `kb/answer.produced` on its way out.
+    """
+    async with get_session() as session:
+        return await ask_question(session, question=payload.question, limit=payload.limit)

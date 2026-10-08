@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from kb.db.models import Article, Cost, Job, Passage, Publication
+from kb.db.models import Article, Cost, Job, Passage, Publication, Snapshot
 
 
 async def upsert_publication(
@@ -150,13 +150,22 @@ async def get_job_status(session: AsyncSession, event_id: str) -> dict[str, obje
     """`done` is resolved from real article rows, not incremented by ingest-article
     (which never learns which discovery job triggered it — see the Job model's
     `publication_id` comment). Read-repairs `jobs.done` in the same query.
+
+    Only articles written since the job started count towards it: a backfill of a
+    publication that already has articles must not look finished before it starts.
     """
     job = await get_job(session, event_id)
     if job is None:
         return None
-    done = job.total if job.publication_id is None else min(
-        await count_articles_for_publication(session, job.publication_id), job.total
+    done = (
+        job.total
+        if job.publication_id is None
+        else min(
+            await count_articles_for_publication_since(session, job.publication_id, job.created_at),
+            job.total,
+        )
     )
+    done = max(done, job.done)
     if done != job.done:
         job.done = done
     if done >= job.total and job.status != "completed":
@@ -180,6 +189,18 @@ async def count_passages(session: AsyncSession) -> int:
 
 async def count_articles_for_publication(session: AsyncSession, publication_id: uuid.UUID) -> int:
     stmt = select(func.count()).select_from(Article).where(Article.publication_id == publication_id)
+    return (await session.execute(stmt)).scalar_one()
+
+
+async def count_articles_for_publication_since(
+    session: AsyncSession, publication_id: uuid.UUID, since: datetime
+) -> int:
+    """Articles of a publication created or updated at or after `since`."""
+    stmt = (
+        select(func.count())
+        .select_from(Article)
+        .where(Article.publication_id == publication_id, Article.updated_at >= since)
+    )
     return (await session.execute(stmt)).scalar_one()
 
 
@@ -280,3 +301,34 @@ async def search_passages_dense(
         }
         for row in rows
     ]
+
+
+async def save_snapshot(
+    session: AsyncSession,
+    *,
+    snapshot_id: str,
+    question: str,
+    answer_text: str,
+    citations: list[dict[str, object]],
+    retrieved: list[dict[str, object]],
+    retriever_variant: str,
+    as_of: datetime | None,
+    latency_ms: int,
+) -> None:
+    session.add(
+        Snapshot(
+            snapshot_id=snapshot_id,
+            question=question,
+            answer_text=answer_text,
+            citations=citations,
+            retrieved=retrieved,
+            retriever_variant=retriever_variant,
+            as_of=as_of,
+            latency_ms=latency_ms,
+        )
+    )
+
+
+async def get_snapshot(session: AsyncSession, snapshot_id: str) -> Snapshot | None:
+    stmt = select(Snapshot).where(Snapshot.snapshot_id == snapshot_id)
+    return (await session.execute(stmt)).scalar_one_or_none()

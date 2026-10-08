@@ -1,5 +1,4 @@
-"""Reachability checks for `GET /health` (kb/main.py).
-"""
+"""Reachability checks for `GET /health` (kb/main.py)."""
 
 from __future__ import annotations
 

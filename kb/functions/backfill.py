@@ -1,20 +1,22 @@
-"""kb/publication.added -> discovery.
+"""kb/publication.added -> backfill-publication.
 
-Fetches the feed, upserts the publication, takes the most recent
-`discovery_limit` entries, and fans out
-`kb/article.discovered` with `via="rss"` for every entry that isn't stored yet.
-Re-adding a publication therefore retries exactly the articles whose
-`ingest-article` run failed, and skips the ones that already succeeded.
+Week 2's replacement for `add-publication`. Same first three steps (allowlist,
+feed, publication row), but instead of the latest `discovery_limit` entries it
+takes EVERY entry in the feed, skips the articles already stored, and fans out
+`kb/article.discovered` with `via="backfill"` in batches.
 
-Week 1 only. From week 2 on, `backfill-publication` (`backfill.py`) listens
-to the same event and handles the whole feed instead, so this function is no
-longer registered in `kb/functions/__init__.py`. It stays here because
-`docs/week-1.md` walks through it.
+Note that a Substack RSS feed only carries a publication's most recent posts
+(around 20), so "every entry in the feed" is not the full archive.
+
+The fan-out is cheap on purpose: the expensive work happens in
+`ingest-article`, where concurrency, throttling and priority decide when each
+article actually runs.
 """
 
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 import inngest
 
@@ -34,11 +36,11 @@ from kb.sources.rss import fetch_feed, parse_feed
 
 
 @client.create_function(
-    fn_id="add-publication",
+    fn_id="backfill-publication",
     trigger=inngest.TriggerEvent(event=PUBLICATION_ADDED),
     retries=3,
 )
-async def add_publication(ctx: inngest.Context) -> dict[str, int]:
+async def backfill_publication(ctx: inngest.Context) -> dict[str, int]:
     payload = PublicationAdded.model_validate(ctx.event.data)
 
     async def _match_allowlist() -> dict[str, object]:
@@ -70,41 +72,45 @@ async def add_publication(ctx: inngest.Context) -> dict[str, int]:
             await session.commit()
             return str(publication_id)
 
-    publication_id = await ctx.step.run("upsert-publication", _upsert_publication)
+    publication_id = uuid.UUID(await ctx.step.run("upsert-publication", _upsert_publication))
 
-    async def _discover_and_emit() -> dict[str, int]:
-        entries = parse_feed(feed_text.encode("utf-8"))[: settings.discovery_limit]
-        discovered = [
+    async def _find_new_articles() -> list[dict[str, Any]]:
+        candidates = [
             ArticleDiscovered(
                 canonical_id=canonical_id(pub.slug, entry.url),
-                publication_id=uuid.UUID(publication_id),
+                publication_id=publication_id,
                 url=entry.url,
                 title=entry.title,
                 published_at=entry.published_at,
-                via="rss",
+                via="backfill",
             )
-            for entry in entries
+            for entry in parse_feed(feed_text.encode("utf-8"))
         ]
+        if not candidates:
+            return []
         async with get_session() as session:
-            stored = await get_existing_canonical_ids(session, [d.canonical_id for d in discovered])
-        missing = [d for d in discovered if d.canonical_id not in stored]
-        if missing:
-            # One batched send, not one call per article.
-            await client.send(
-                [
-                    inngest.Event(name=ARTICLE_DISCOVERED, data=d.model_dump(mode="json"))
-                    for d in missing
-                ]
-            )
+            stored = await get_existing_canonical_ids(session, [c.canonical_id for c in candidates])
+        return [c.model_dump(mode="json") for c in candidates if c.canonical_id not in stored]
+
+    new_articles = await ctx.step.run("find-new-articles", _find_new_articles)
+
+    async def _record_and_fan_out() -> dict[str, int]:
+        # The job row goes first: GET /jobs counts articles written after the job
+        # started, so it must exist before the first article can land.
         async with get_session() as session:
             await create_job(
                 session,
                 event_id=ctx.event.id,
-                kind="discovery",
-                total=len(discovered),
-                publication_id=uuid.UUID(publication_id),
+                kind="backfill",
+                total=len(new_articles),
+                publication_id=publication_id,
             )
             await session.commit()
-        return {"count": len(discovered), "emitted": len(missing)}
 
-    return await ctx.step.run("discover-and-emit", _discover_and_emit)
+        batch_size = settings.backfill_batch_size
+        for start in range(0, len(new_articles), batch_size):
+            batch = new_articles[start : start + batch_size]
+            await client.send([inngest.Event(name=ARTICLE_DISCOVERED, data=d) for d in batch])
+        return {"discovered": len(new_articles)}
+
+    return await ctx.step.run("record-and-fan-out", _record_and_fan_out)

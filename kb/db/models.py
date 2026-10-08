@@ -1,9 +1,10 @@
 """SQLAlchemy models.
 
 Only one function writes each table ("one writer per table"
-rule): `add-publication` writes `publications` and `cursors`, `ingest-article`
-writes `articles`/`passages`/`jobs`, and the cost-capture middleware writes
-`costs`. Every write here is an upsert; see `kb/db/queries.py`.
+rule): `add-publication` / `backfill-publication` write `publications` and
+`jobs`, `ingest-article` writes `articles`/`passages`, the cost-capture
+middleware writes `costs`, and `POST /ask` writes `snapshots`. Every pipeline
+write is an upsert (snapshots are append-only); see `kb/db/queries.py`.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
-from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from kb.config import settings
@@ -129,5 +130,29 @@ class Cost(Base):
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     est_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, default=0)
     at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Snapshot(Base):
+    """One row per answer from `POST /ask`: what was asked, what was answered, and
+    EVERY candidate passage the retriever surfaced (not only the cited ones), with
+    its rank in each search engine. That is what lets us tell, later, whether a bad
+    answer came from ingestion, retrieval or generation.
+    """
+
+    __tablename__ = "snapshots"
+
+    snapshot_id: Mapped[str] = mapped_column(String, primary_key=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer_text: Mapped[str] = mapped_column(Text, nullable=False)
+    citations: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False, default=list)
+    retrieved: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False, default=list)
+    retriever_variant: Mapped[str] = mapped_column(String, nullable=False)
+    as_of: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Filled in by the evaluators in week 5; always NULL in week 2.
+    confidence: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

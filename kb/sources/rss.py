@@ -27,6 +27,33 @@ async def fetch_feed(feed_url: str) -> bytes:
         return response.content
 
 
+async def fetch_feed_conditional(
+    feed_url: str,
+    etag: str | None = None,
+    last_modified: str | None = None,
+) -> tuple[int, bytes | None, str | None, str | None]:
+    """Fetch an RSS feed conditionally using ETag and Last-Modified headers.
+    Returns (status_code, content_or_none, response_etag, response_last_modified).
+    """
+    headers: dict[str, str] = {"User-Agent": settings.user_agent}
+    if etag:
+        headers["If-None-Match"] = etag
+    if last_modified:
+        headers["If-Modified-Since"] = last_modified
+
+    async with httpx.AsyncClient(headers=headers, timeout=settings.request_timeout_s) as client:
+        response = await client.get(feed_url, follow_redirects=True)
+        resp_etag = response.headers.get("ETag") or etag
+        resp_last_modified = response.headers.get("Last-Modified") or last_modified
+
+        if response.status_code == 304:
+            return 304, None, resp_etag, resp_last_modified
+
+        response.raise_for_status()
+        return response.status_code, response.content, resp_etag, resp_last_modified
+
+
+
 def parse_feed(raw: bytes) -> list[FeedEntry]:
     """Fail clearly if the feed does not parse at all."""
     parsed = feedparser.parse(raw)

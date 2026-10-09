@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -63,7 +63,13 @@ class Article(Base):
 class Passage(Base):
     __tablename__ = "passages"
     __table_args__ = (
-        Index("uq_passages_article_chunk", "article_id", "chunk_index", unique=True),
+        Index(
+            "uq_passages_article_chunk",
+            "article_id",
+            "chunk_index",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL"),
+        ),
         Index("ix_passages_tsv", "tsv", postgresql_using="gin"),
     )
 
@@ -156,3 +162,21 @@ class Snapshot(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class Failure(Base):
+    """Accumulates execution failures from `inngest/function.failed` system events.
+    Provides a real-world dataset of production errors for week 5 automated evals.
+    """
+
+    __tablename__ = "failures"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    function_id: Mapped[str] = mapped_column(String, nullable=False)
+    run_id: Mapped[str] = mapped_column(String, nullable=False)
+    error: Mapped[str] = mapped_column(Text, nullable=False)
+    event_data: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+

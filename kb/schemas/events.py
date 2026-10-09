@@ -16,9 +16,10 @@ from pydantic import BaseModel
 PUBLICATION_ADDED = "kb/publication.added"
 ARTICLE_DISCOVERED = "kb/article.discovered"
 ARTICLE_INGESTED = "kb/article.ingested"
+ARTICLE_UPDATED = "kb/article.updated"
 ANSWER_PRODUCED = "kb/answer.produced"
 
-DiscoverySource = Literal["rss", "backfill", "manual"]
+DiscoverySource = Literal["rss", "backfill", "manual", "poll"]
 
 
 class PublicationAdded(BaseModel):
@@ -41,6 +42,15 @@ class ArticleDiscovered(BaseModel):
 
 class ArticleIngested(BaseModel):
     """ingest -> anyone listening. An article's passages are now persisted."""
+
+    canonical_id: str
+    article_id: UUID
+    content_hash: str
+    passage_count: int
+
+
+class ArticleUpdated(BaseModel):
+    """ingest -> anyone listening. An article's passages were superseded and updated."""
 
     canonical_id: str
     article_id: UUID

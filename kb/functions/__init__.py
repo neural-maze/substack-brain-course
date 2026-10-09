@@ -7,6 +7,13 @@ both listen to `kb/publication.added`, so only one of them can be active.
 import inngest
 
 from kb.functions.backfill import backfill_publication
+from kb.functions.freshness import poll_feeds
 from kb.functions.ingest import ingest_article
+from kb.functions.ops import handle_function_failed
 
-FUNCTIONS: list[inngest.Function] = [backfill_publication, ingest_article]
+FUNCTIONS: list[inngest.Function] = [
+    backfill_publication,
+    ingest_article,
+    poll_feeds,
+    handle_function_failed,
+]

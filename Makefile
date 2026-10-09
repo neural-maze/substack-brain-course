@@ -13,8 +13,8 @@ start:
 	@until [ "$$($(COMPOSE) ps -q postgres | xargs docker inspect -f '{{.State.Health.Status}}')" = "healthy" ]; do \
 		sleep 1; \
 	done
-	uv run alembic upgrade head
-	uv run uvicorn kb.main:app --reload --port $(LAB_PORT)
+	uv run python -m alembic upgrade head
+	uv run python -m uvicorn kb.main:app --reload --port $(LAB_PORT)
 
 stop:
 	$(COMPOSE) down
@@ -55,10 +55,10 @@ db-clear:
 		"DO \$$\$$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'alembic_version') LOOP EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE'; END LOOP; END \$$\$$;"
 
 lint:
-	uv run ruff check .
-	uv run mypy
+	uv run python -m ruff check .
+	uv run python -m mypy
 
 test:
-	uv run pytest
+	uv run python -m pytest
 
 check: lint test

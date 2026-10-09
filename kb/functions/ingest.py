@@ -27,14 +27,22 @@ from typing import cast
 import inngest
 
 from kb.config import settings
-from kb.db.queries import replace_passages, upsert_article
+from kb.db.queries import (
+    get_article_by_canonical_id,
+    insert_passages_fresh,
+    replace_passages,
+    supersede_passages,
+    upsert_article,
+)
 from kb.db.session import get_session
 from kb.inngest_client import client
 from kb.schemas.events import (
     ARTICLE_DISCOVERED,
     ARTICLE_INGESTED,
+    ARTICLE_UPDATED,
     ArticleDiscovered,
     ArticleIngested,
+    ArticleUpdated,
 )
 from kb.sources.allowlist import assert_allowed, load_publications
 from kb.sources.chunking import chunk_text
@@ -97,6 +105,26 @@ async def ingest_article(ctx: inngest.Context) -> dict[str, object]:
 
     parsed = await ctx.step.run("parse", _parse)
 
+    async def _check_content_change() -> dict[str, object]:
+        async with get_session() as session:
+            existing = await get_article_by_canonical_id(session, payload.canonical_id)
+            if existing is None:
+                return {"is_new": True, "changed": True, "article_id": None}
+            if existing.content_hash == str(parsed["content_hash"]):
+                return {"is_new": False, "changed": False, "article_id": str(existing.id)}
+            return {"is_new": False, "changed": True, "article_id": str(existing.id)}
+
+    change_info = await ctx.step.run("check-content-change", _check_content_change)
+
+    if not change_info["changed"]:
+        return {
+            "article_id": str(change_info["article_id"]),
+            "passage_count": 0,
+            "status": "unchanged",
+        }
+
+    is_update = not bool(change_info["is_new"])
+
     async def _chunk() -> list[str]:
         return chunk_text(
             str(parsed["text"]),
@@ -125,27 +153,45 @@ async def ingest_article(ctx: inngest.Context) -> dict[str, object]:
                 content_hash=str(parsed["content_hash"]),
                 text=str(parsed["text"]),
             )
-            passage_count = await replace_passages(
-                session,
-                article_id=article_id,
-                passages=[
-                    {"chunk_index": i, "text": chunk, "embedding": embedding}
-                    for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=True))
-                ],
-            )
+            passages_data = [
+                {"chunk_index": i, "text": chunk, "embedding": embedding}
+                for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=True))
+            ]
+            if is_update:
+                await supersede_passages(session, article_id=article_id)
+                passage_count = await insert_passages_fresh(
+                    session, article_id=article_id, passages=passages_data
+                )
+            else:
+                passage_count = await replace_passages(
+                    session, article_id=article_id, passages=passages_data
+                )
             await session.commit()
             return {"article_id": str(article_id), "passage_count": passage_count}
 
     persisted = await ctx.step.run("persist", _persist)
 
     async def _emit() -> dict[str, bool]:
-        event = ArticleIngested(
-            canonical_id=payload.canonical_id,
-            article_id=persisted["article_id"],  # type: ignore[arg-type]
-            content_hash=str(parsed["content_hash"]),
-            passage_count=persisted["passage_count"],  # type: ignore[arg-type]
-        )
-        await client.send(inngest.Event(name=ARTICLE_INGESTED, data=event.model_dump(mode="json")))
+        if is_update:
+            event = ArticleUpdated(
+                canonical_id=payload.canonical_id,
+                article_id=persisted["article_id"],  # type: ignore[arg-type]
+                content_hash=str(parsed["content_hash"]),
+                passage_count=persisted["passage_count"],  # type: ignore[arg-type]
+            )
+            await client.send(
+                inngest.Event(name=ARTICLE_UPDATED, data=event.model_dump(mode="json"))
+            )
+        else:
+            event = ArticleIngested(
+                canonical_id=payload.canonical_id,
+                article_id=persisted["article_id"],  # type: ignore[arg-type]
+                content_hash=str(parsed["content_hash"]),
+                passage_count=persisted["passage_count"],  # type: ignore[arg-type]
+            )
+            await client.send(
+                inngest.Event(name=ARTICLE_INGESTED, data=event.model_dump(mode="json"))
+            )
         return {"event_sent": True}
 
     await ctx.step.run("emit", _emit)

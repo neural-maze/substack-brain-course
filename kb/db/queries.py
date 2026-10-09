@@ -7,11 +7,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from kb.db.models import Article, Cost, Job, Passage, Publication, Snapshot
+from kb.db.models import Article, Cost, Cursor, Failure, Job, Passage, Publication, Snapshot
 
 
 async def upsert_publication(
@@ -113,6 +113,7 @@ async def replace_passages(
     )
     stmt = stmt.on_conflict_do_update(
         index_elements=[Passage.article_id, Passage.chunk_index],
+        index_where=Passage.valid_to.is_(None),
         set_={"text": stmt.excluded.text, "embedding": stmt.excluded.embedding},
     )
     await session.execute(stmt)
@@ -332,3 +333,129 @@ async def save_snapshot(
 async def get_snapshot(session: AsyncSession, snapshot_id: str) -> Snapshot | None:
     stmt = select(Snapshot).where(Snapshot.snapshot_id == snapshot_id)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def get_article_by_canonical_id(session: AsyncSession, canonical_id: str) -> Article | None:
+    stmt = select(Article).where(Article.canonical_id == canonical_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def supersede_passages(session: AsyncSession, article_id: uuid.UUID) -> int:
+    """Close active passages by setting valid_to = now(). History is preserved."""
+    stmt = (
+        update(Passage)
+        .where(Passage.article_id == article_id, Passage.valid_to.is_(None))
+        .values(valid_to=func.now())
+    )
+    result = await session.execute(stmt)
+    return result.rowcount
+
+
+async def insert_passages_fresh(
+    session: AsyncSession,
+    *,
+    article_id: uuid.UUID,
+    passages: list[dict[str, object]],
+) -> int:
+    """Insert new passage versions without conflicting on previously superseded rows."""
+    if not passages:
+        return 0
+    stmt = insert(Passage).values(
+        [
+            {
+                "id": uuid.uuid4(),
+                "article_id": article_id,
+                "chunk_index": p["chunk_index"],
+                "text": p["text"],
+                "embedding": p["embedding"],
+            }
+            for p in passages
+        ]
+    )
+    await session.execute(stmt)
+    return len(passages)
+
+
+async def get_cursor(session: AsyncSession, publication_id: uuid.UUID) -> Cursor | None:
+    stmt = select(Cursor).where(Cursor.publication_id == publication_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def update_cursor(
+    session: AsyncSession,
+    *,
+    publication_id: uuid.UUID,
+    etag: str | None,
+    last_modified: str | None,
+    not_modified: bool = False,
+) -> None:
+    """Update or insert publication polling cursor with conditional response metadata."""
+    existing = await get_cursor(session, publication_id)
+    if existing is None:
+        cursor = Cursor(
+            publication_id=publication_id,
+            etag=etag,
+            last_modified=last_modified,
+            last_checked_at=datetime.now(),
+            poll_count=1,
+            not_modified_count=1 if not_modified else 0,
+        )
+        session.add(cursor)
+    else:
+        existing.poll_count += 1
+        if not_modified:
+            existing.not_modified_count += 1
+        else:
+            if etag:
+                existing.etag = etag
+            if last_modified:
+                existing.last_modified = last_modified
+        existing.last_checked_at = datetime.now()
+
+
+async def record_failure(
+    session: AsyncSession,
+    *,
+    function_id: str,
+    run_id: str,
+    error: str,
+    event_data: dict[str, object] | None = None,
+) -> uuid.UUID:
+    failure = Failure(
+        id=uuid.uuid4(),
+        function_id=function_id,
+        run_id=run_id,
+        error=error,
+        event_data=event_data,
+    )
+    session.add(failure)
+    await session.flush()
+    return failure.id
+
+
+async def list_publications_with_stats(session: AsyncSession) -> list[dict[str, object]]:
+    """List publications alongside article counts and cursor sync info."""
+    pubs = await list_publications(session)
+    results = []
+    for pub in pubs:
+        art_count = await count_articles_for_publication(session, pub.id)
+        cursor = await get_cursor(session, pub.id)
+        last_checked = (
+            cursor.last_checked_at.isoformat() if cursor and cursor.last_checked_at else None
+        )
+        results.append(
+            {
+                "id": str(pub.id),
+                "slug": pub.slug,
+                "name": pub.name,
+                "feed_url": pub.feed_url,
+                "homepage": pub.homepage,
+                "active": pub.active,
+                "article_count": art_count,
+                "last_checked_at": last_checked,
+                "poll_count": cursor.poll_count if cursor else 0,
+                "not_modified_count": cursor.not_modified_count if cursor else 0,
+            }
+        )
+    return results
+

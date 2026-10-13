@@ -57,7 +57,7 @@ def test_ops_function_trigger() -> None:
     config = handle_function_failed.get_config("http://localhost:8000").main
     triggers = config.triggers
     assert len(triggers) == 1
-    assert triggers[0].event == "inngest/function.failed"
+    assert getattr(triggers[0], "event", None) == "inngest/function.failed"
 
 
 def test_article_updated_event_schema() -> None:

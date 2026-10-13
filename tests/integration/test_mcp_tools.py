@@ -10,10 +10,12 @@ if that stack isn't up.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any, cast
 
 import httpx
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from kb.config import settings
 from kb.db.queries import replace_passages, upsert_article, upsert_publication
@@ -41,7 +43,7 @@ async def test_kb_health_reports_ok_against_the_real_dev_stack() -> None:
     assert isinstance(result["passages"], int)
 
 
-async def test_kb_search_finds_a_seeded_passage(db) -> None:
+async def test_kb_search_finds_a_seeded_passage(db: AsyncSession) -> None:
     publication_id = await upsert_publication(
         db,
         slug="kb-search-test-pub",
@@ -75,8 +77,9 @@ async def test_kb_search_finds_a_seeded_passage(db) -> None:
 
     result = await tools.kb_search("striped zebras Africa", limit=5)
 
-    assert len(result["results"]) >= 1
-    titles = [r["title"] for r in result["results"]]
+    search_results = cast("list[dict[str, Any]]", result["results"])
+    assert len(search_results) >= 1
+    titles = [r["title"] for r in search_results]
     assert "A Post About Zebras" in titles
 
 

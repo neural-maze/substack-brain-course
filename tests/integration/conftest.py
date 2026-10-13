@@ -12,7 +12,7 @@ can be re-run against the same dev database indefinitely.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Generator
 from typing import TypeVar
 
 import pytest
@@ -59,7 +59,7 @@ class SyncDB:
 
 
 @pytest.fixture
-def sync_db(monkeypatch: pytest.MonkeyPatch):  # noqa: ANN201
+def sync_db(monkeypatch: pytest.MonkeyPatch) -> Generator[SyncDB, None, None]:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     connection_cm = _test_engine.connect()

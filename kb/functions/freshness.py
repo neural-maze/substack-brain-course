@@ -103,12 +103,11 @@ async def poll_feeds(ctx: inngest.Context) -> dict[str, object]:
                             name=ARTICLE_DISCOVERED,
                             data=ArticleDiscovered(
                                 canonical_id=cid,
-                                publication_id=str(pub_id),
+                                publication_id=pub_id,
                                 url=entry.url,
                                 title=entry.title,
-                                published_at=entry.published_at.isoformat(),
+                                published_at=entry.published_at,
                                 via="poll",
-                                priority=50,
                             ).model_dump(mode="json"),
                         )
                     )

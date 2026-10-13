@@ -2,9 +2,9 @@
 
 **Course framing:** *Turn your pipeline into a polite, living subscriber of the web, handle article edits without destroying citation history, capture runtime failures for evals, and give agents an official MCP interface.*
 
-This guide assumes you finished week 2: the stack starts with `make start`, and you've backfilled the allowlisted newsletters. Everything runs on the same containers and database. `make start` applies this week's migrations (the `failures` table and the partial unique index on `passages`) automatically.
+This guide is written so you can follow it top to bottom, whether you finished Week 2 or are **starting fresh from a clean state** (`make nuke` / fresh clone). Every command below can be run against this repo state.
 
-The main `[README.md](../README.md)` has the short version of setup. This file is the full walkthrough.
+The main `[README.md](../README.md)` has the high-level course overview. This file is the full walkthrough.
 
 ## What you're building
 
@@ -49,15 +49,34 @@ The **Asymmetry Principle** resolves this by enforcing a hard boundary:
 
 The MCP server introduces zero new orchestration logic: it is purely an ergonomic wrapper around queries and events that already exist.
 
+---
+
+## Step 0 — Fresh start setup
+
+If you are continuing with an existing database from week 2, you can skip straight to **Step 1**.
+
+If you are starting fresh, configure your environment:
+
+1. **Set up `.env`**:
+   ```bash
+   cp .env.example .env
+   ```
+   Open `.env` and fill in:
+   - `OPENAI_API_KEY`: Required for embeddings (`text-embedding-3-small`).
+   - `ANTHROPIC_API_KEY`: Optional; used by `POST /ask` and `kb_ask` synthesis. Without it, retrieval still works.
+   - `PRIORITY_BACKFILL_S=0`: *(Optional pro-tip)* Week 2 defaults backfill priority to `-600` (a 10-minute queue delay to let manual submissions jump ahead). If you are testing backfills locally and want them to process immediately, set `PRIORITY_BACKFILL_S=0`.
+
+2. **Start the stack**:
+   ```bash
+   make start
+   ```
+   This launches Postgres (pgvector), Adminer, and the Inngest Dev Server via Docker Compose, runs Alembic migrations up to head, and starts FastAPI at `http://localhost:8000`. Leave this terminal open.
+
+---
+
 ## Step 1 — Migrations: failures and partial indexes
 
-Start the stack:
-
-```bash
-make start
-```
-
-`make start` runs `alembic upgrade head`, which applies `alembic/versions/e4a7b9c1d2e3_week_3_failures_table.py`:
+`make start` automatically applies `alembic/versions/e4a7b9c1d2e3_week_3_failures_table.py`. This migration does two things:
 
 1. Creates the `failures` table (`id`, `function_id`, `run_id`, `error`, `event_data`, `created_at`).
 2. Drops week 1's unconditional unique index on `passages` and replaces it with a **partial unique index**:
@@ -69,6 +88,17 @@ WHERE valid_to IS NULL;
 ```
 
 A standard unique constraint would block inserting chunk 0 of an updated article while chunk 0 of the superseded revision still exists. The partial index enforces uniqueness only across active passages (`valid_to IS NULL`), allowing historical revisions to coexist in storage.
+
+Verify the migration in Postgres:
+
+```bash
+docker compose -f infra/docker-compose.yml exec postgres \
+  psql -U substack_brain -d substack_brain -c \
+  "\d passages"
+```
+Look for `uq_passages_article_chunk UNIQUE, btree (article_id, chunk_index) WHERE valid_to IS NULL`.
+
+---
 
 ## Step 2 — Conditional polling (the 304 fast path)
 
@@ -82,16 +112,35 @@ if last_modified:
     headers["If-Modified-Since"] = last_modified
 ```
 
-`poll-feeds` (`kb/functions/freshness.py`) runs every 5 minutes on a cron (`*/5 * * * *`) and also listens for `kb/feed.poll`. Test it by triggering a poll event manually:
+`poll-feeds` (`kb/functions/freshness.py`) runs every 5 minutes on a cron (`*/5 * * * *`) and also listens for the `kb/feed.poll` event.
 
-```bash
-curl -X POST http://localhost:8288/e/kb/feed.poll -H "Content-Type: application/json" -d '{}'
-```
+### The Two-Phase Lifecycle: Cold Start vs. Fast Path
 
-Open the Inngest Dev Server at `http://localhost:8288`. The run completes across all allowlisted publications in milliseconds:
-- The origin returns `HTTP 304`.
-- 0 bytes of feed XML are transferred or parsed.
-- `cursors.not_modified_count` increments in Postgres:
+1. **Run 1: Cold Start (The First Poll)**
+   On a clean database, `cursors` has no record of `ETag` or `Last-Modified`. Triggering a poll for the first time fetches the feeds without validation headers:
+   ```bash
+   curl -X POST http://localhost:8288/e/local \
+     -H "Content-Type: application/json" \
+     -d '{"name": "kb/feed.poll", "data": {}}'
+   ```
+   - Origins return `HTTP 200 OK`.
+   - The response headers (`ETag`, `Last-Modified`) are saved to the `cursors` table.
+   - Any new articles found fan out to `ingest-article`.
+
+2. **Run 2: The Fast Path (`304 Not Modified`)**
+   Trigger the poll event a second time:
+   ```bash
+   curl -X POST http://localhost:8288/e/local \
+     -H "Content-Type: application/json" \
+     -d '{"name": "kb/feed.poll", "data": {}}'
+   ```
+   Now check the Inngest Dev Server (`http://localhost:8288`):
+   - The run completes across all allowlisted publications in milliseconds.
+   - The origin returns `HTTP 304`.
+   - 0 bytes of feed XML are transferred or parsed.
+   - `cursors.not_modified_count` increments in Postgres!
+
+Check the cursors table:
 
 ```bash
 docker compose -f infra/docker-compose.yml exec postgres \
@@ -100,6 +149,8 @@ docker compose -f infra/docker-compose.yml exec postgres \
 ```
 
 Only when an author posts new content does the feed return `200 OK`, updating the cursor and emitting `kb/article.discovered` for the new items.
+
+---
 
 ## Step 3 — Article edits and temporal supersession
 
@@ -118,15 +169,45 @@ if is_update:
 
 `supersede_passages` seals active rows with `valid_to = func.now()`. Fresh chunks are inserted with `valid_to = NULL`, and `ArticleUpdated` is emitted.
 
-Inspect updated passages in Postgres:
+### Try it yourself: Simulate an article update
 
-```bash
-docker compose -f infra/docker-compose.yml exec postgres \
-  psql -U substack_brain -d substack_brain -c \
-  "SELECT chunk_index, valid_from, valid_to, LEFT(text, 50) AS snippet FROM passages ORDER BY chunk_index, valid_from;"
-```
+You don't have to wait for an author to edit a post to see supersession work. Try this hands-on test:
 
-Old passages retain their timestamps for auditability; new passages have `valid_to = NULL`. Because BM25 (`kb/retrieval/sparse.py`) and pgvector (`kb/retrieval/dense.py`) filter `WHERE valid_to IS NULL`, search results never return duplicates.
+1. **Ingest an article manually**:
+   ```bash
+   curl -X POST http://localhost:8000/articles -H "Content-Type: application/json" \
+     -d '{"url": "https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven"}'
+   ```
+   *(Manual ingestion tags `via="manual"`, giving it `+600` priority so it runs immediately).*
+
+2. **Simulate an upstream edit**:
+   In Postgres, tamper with the stored `content_hash` so the pipeline detects a change on its next run:
+   ```bash
+   docker compose -f infra/docker-compose.yml exec -T postgres \
+     psql -U substack_brain -d substack_brain -c \
+     "UPDATE articles SET content_hash = 'stale_hash_for_testing' WHERE url = 'https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven';"
+   ```
+
+3. **Re-submit the article**:
+   ```bash
+   curl -X POST http://localhost:8000/articles -H "Content-Type: application/json" \
+     -d '{"url": "https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven"}'
+   ```
+
+4. **Inspect the superseded passages**:
+   ```bash
+   docker compose -f infra/docker-compose.yml exec -T postgres \
+     psql -U substack_brain -d substack_brain -c \
+     "SELECT p.chunk_index, p.valid_from, p.valid_to, LEFT(p.text, 50) AS snippet FROM passages p JOIN articles a ON p.article_id = a.id WHERE a.url = 'https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven' ORDER BY p.chunk_index, p.valid_from;"
+   ```
+
+Notice what happened:
+- Old passages now have `valid_to = <timestamp>`.
+- Fresh passages have `valid_to = NULL`.
+- Historical passages were never deleted.
+- Search queries (`GET /search` and `POST /ask`) filter `WHERE valid_to IS NULL`, so search returns only active revisions with zero duplicate chunks.
+
+---
 
 ## Step 4 — Turn failures into an eval dataset
 
@@ -146,6 +227,33 @@ async def handle_function_failed(ctx: inngest.Context) -> dict[str, object]:
 
 Instead of synthetic test data, our week 5 benchmark suite will replay genuine production failures captured here.
 
+### Try it yourself: Capture an Inngest failure
+
+Simulate an operational failure event:
+
+```bash
+curl -X POST http://localhost:8288/e/local -H "Content-Type: application/json" \
+  -d '{
+    "name": "inngest/function.failed",
+    "data": {
+      "error": {"message": "Simulated upstream rate limit error for week 5 evals"},
+      "function_id": "ingest-article"
+    }
+  }'
+```
+
+Check the `failures` table in Postgres:
+
+```bash
+docker compose -f infra/docker-compose.yml exec postgres \
+  psql -U substack_brain -d substack_brain -c \
+  "SELECT function_id, error, created_at FROM failures;"
+```
+
+The failure is persisted with its payload and ready to be replayed during evals.
+
+---
+
 ## Step 5 — The 8 MCP tools
 
 The MCP server is declared in `kb/mcp/server.py` and implements 8 tools in `kb/mcp/tools.py`:
@@ -161,15 +269,31 @@ The MCP server is declared in `kb/mcp/server.py` and implements 8 tools in `kb/m
 | `kb_backfill(publication)` | Write | Queues backfill runs for one or all allowlisted publications. |
 | `kb_sync(publication)` | Write | Dispatches `kb/feed.poll` to trigger immediate conditional check. |
 
+---
+
 ## Step 6 — Connect Claude Code and Cursor
 
-The server runs via stdio (`kb-mcp` console script from `pyproject.toml`):
+The server runs via stdio (`kb-mcp` console script from `pyproject.toml`).
 
+### 1. Test directly from the terminal first
+
+Before configuring IDE plugins, verify that the server runs and all tools respond:
+
+**Option A: Run the integration tests**
 ```bash
-uv run kb-mcp
+uv run python -m pytest tests/integration/test_mcp_tools.py tests/integration/test_mcp_server.py
 ```
 
-### Configure Claude Code (`~/.claude.json`)
+**Option B: Test interactively with MCP Inspector**
+```bash
+npx @modelcontextprotocol/inspector uv run kb-mcp
+```
+This opens a web UI where you can inspect tools and invoke `kb_health`, `kb_list_publications`, and `kb_search` in real time.
+
+---
+
+### 2. Configure Claude Code (`~/.claude.json`)
+
 ```json
 {
   "mcpServers": {
@@ -181,19 +305,23 @@ uv run kb-mcp
 }
 ```
 
-### Configure Cursor
+### 3. Configure Cursor
+
 Open **Settings** ➔ **Features** ➔ **MCP** ➔ **Add New MCP Server**:
 - **Name**: `living-kb`
 - **Type**: `command`
 - **Command**: `uv --directory /absolute/path/to/substack-brain-course run kb-mcp`
 
 ### Try it in chat
+
 Ask your agent:
 - *"Check the health of our knowledge base and list the publications we have indexed."*
 - *"Search our knowledge base for reciprocal rank fusion."*
 - *"Force an immediate freshness check for all publications."*
 
 Fast reads return in under a second; writes queue an Inngest event and return a trace URL immediately without freezing the chat.
+
+---
 
 ## Step 7 — Run the tests
 
@@ -203,19 +331,22 @@ Unit tests in `tests/test_week3.py` verify triggers, schemas, and MCP tool regis
 uv run python -m pytest tests/test_week3.py
 ```
 
-With the stack running (`make start`), you can also run the MCP integration tests:
+Run the complete test and lint suite:
 
 ```bash
-uv run python -m pytest tests/integration/test_mcp_tools.py tests/integration/test_mcp_server.py
+make check
 ```
+
+---
 
 ## Verification checklist
 
 - [ ] `make check` passes (`ruff check .`, `mypy`, `pytest`).
 - [ ] Database migrations applied: `failures` table exists and `passages` has `uq_passages_article_chunk ... WHERE valid_to IS NULL`.
-- [ ] Conditional polling: triggering `kb/feed.poll` finishes in <20ms, returns 304, and increments `not_modified_count` in `cursors`.
+- [ ] Conditional polling: triggering `kb/feed.poll` on subsequent runs returns 304 and increments `not_modified_count` in `cursors`.
 - [ ] Supersession: updating an article sets `valid_to` on existing chunks, inserts new chunks with `valid_to = NULL`, and emits `kb/article.updated`.
 - [ ] Search filtering: `GET /search` and `POST /ask` retrieve only active passages (`valid_to IS NULL`).
 - [ ] Failure recording: `inngest/function.failed` creates rows in the `failures` table.
 - [ ] MCP Server: `uv run kb-mcp` exposes all 8 tools over stdio.
 - [ ] Agent integration: Claude Code or Cursor connects to `living-kb` and executes `kb_health`, `kb_search`, and `kb_sync`.
+

@@ -173,24 +173,24 @@ async def ingest_article(ctx: inngest.Context) -> dict[str, object]:
 
     async def _emit() -> dict[str, bool]:
         if is_update:
-            event = ArticleUpdated(
+            updated_event = ArticleUpdated(
                 canonical_id=payload.canonical_id,
                 article_id=persisted["article_id"],  # type: ignore[arg-type]
                 content_hash=str(parsed["content_hash"]),
                 passage_count=persisted["passage_count"],  # type: ignore[arg-type]
             )
             await client.send(
-                inngest.Event(name=ARTICLE_UPDATED, data=event.model_dump(mode="json"))
+                inngest.Event(name=ARTICLE_UPDATED, data=updated_event.model_dump(mode="json"))
             )
         else:
-            event = ArticleIngested(
+            ingested_event = ArticleIngested(
                 canonical_id=payload.canonical_id,
                 article_id=persisted["article_id"],  # type: ignore[arg-type]
                 content_hash=str(parsed["content_hash"]),
                 passage_count=persisted["passage_count"],  # type: ignore[arg-type]
             )
             await client.send(
-                inngest.Event(name=ARTICLE_INGESTED, data=event.model_dump(mode="json"))
+                inngest.Event(name=ARTICLE_INGESTED, data=ingested_event.model_dump(mode="json"))
             )
         return {"event_sent": True}
 

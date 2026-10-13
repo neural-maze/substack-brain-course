@@ -348,7 +348,7 @@ async def supersede_passages(session: AsyncSession, article_id: uuid.UUID) -> in
         .values(valid_to=func.now())
     )
     result = await session.execute(stmt)
-    return result.rowcount
+    return getattr(result, "rowcount", 0)
 
 
 async def insert_passages_fresh(

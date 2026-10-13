@@ -13,6 +13,7 @@ import json
 import httpx
 import pytest
 from mcp.client.client import Client
+from mcp.types import TextContent
 
 from kb.config import settings
 from kb.mcp.server import mcp
@@ -59,5 +60,7 @@ async def test_call_kb_health_over_the_real_protocol() -> None:
     async with Client(server=mcp) as client:
         result = await client.call_tool("kb_health", {})
     assert result.is_error is not True
-    payload = json.loads(result.content[0].text)
+    first = result.content[0]
+    assert isinstance(first, TextContent)
+    payload = json.loads(first.text)
     assert payload["status"] == "ok"

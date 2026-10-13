@@ -29,3 +29,6 @@ htmlcov/
 
 # OS
 .DS_Store
+
+# Archives
+*.zip

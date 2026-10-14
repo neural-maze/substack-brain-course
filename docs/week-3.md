@@ -31,7 +31,7 @@ kb/feed.poll / cron (*/5) ──▶ poll-feeds ──▶ 304 Not Modified (<15ms
 
 inngest/function.failed ──▶ handle-function-failed ──▶ failures table
 
-Claude Code / Cursor ──▶ kb-mcp ──▶ Fast reads (<1s, Postgres): kb_health, kb_search, kb_ask, kb_list_pubs, kb_job_status
+Claude Code / Cursor ──▶ kb-mcp ──▶ Fast reads (<1s, Postgres): kb_health, kb_search, kb_ask, kb_list_publications, kb_job_status
                                 ──▶ Slow writes (<50ms, Inngest): kb_add_pub, kb_backfill, kb_sync
 ```
 
@@ -138,7 +138,7 @@ if last_modified:
    - The run completes across all allowlisted publications in milliseconds.
    - The origin returns `HTTP 304`.
    - 0 bytes of feed XML are transferred or parsed.
-   - `cursors.not_modified_count` increments in Postgres!
+   - `cursors.not_modified_count` increments in Postgres.
 
 Check the cursors table:
 
@@ -183,7 +183,7 @@ You don't have to wait for an author to edit a post to see supersession work. Tr
 2. **Simulate an upstream edit**:
    In Postgres, tamper with the stored `content_hash` so the pipeline detects a change on its next run:
    ```bash
-   docker compose -f infra/docker-compose.yml exec -T postgres \
+   docker compose -f infra/docker-compose.yml exec postgres \
      psql -U substack_brain -d substack_brain -c \
      "UPDATE articles SET content_hash = 'stale_hash_for_testing' WHERE url = 'https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven';"
    ```
@@ -196,7 +196,7 @@ You don't have to wait for an author to edit a post to see supersession work. Tr
 
 4. **Inspect the superseded passages**:
    ```bash
-   docker compose -f infra/docker-compose.yml exec -T postgres \
+   docker compose -f infra/docker-compose.yml exec postgres \
      psql -U substack_brain -d substack_brain -c \
      "SELECT p.chunk_index, p.valid_from, p.valid_to, LEFT(p.text, 50) AS snippet FROM passages p JOIN articles a ON p.article_id = a.id WHERE a.url = 'https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven' ORDER BY p.chunk_index, p.valid_from;"
    ```
@@ -283,6 +283,7 @@ Before configuring IDE plugins, verify that the server runs and all tools respon
 ```bash
 uv run python -m pytest tests/integration/test_mcp_tools.py tests/integration/test_mcp_server.py
 ```
+These tests talk to the real Postgres and Inngest Dev Server, so keep `make start` running in another terminal. If the stack is down they are reported as `skipped`, not failed, so check that the summary says `passed`.
 
 **Option B: Test interactively with MCP Inspector**
 ```bash
@@ -297,7 +298,7 @@ This opens a web UI where you can inspect tools and invoke `kb_health`, `kb_list
 ```json
 {
   "mcpServers": {
-    "living-kb": {
+    "substack-brain": {
       "command": "uv",
       "args": ["--directory", "/absolute/path/to/substack-brain-course", "run", "kb-mcp"]
     }
@@ -308,7 +309,7 @@ This opens a web UI where you can inspect tools and invoke `kb_health`, `kb_list
 ### 3. Configure Cursor
 
 Open **Settings** ➔ **Features** ➔ **MCP** ➔ **Add New MCP Server**:
-- **Name**: `living-kb`
+- **Name**: `substack-brain`
 - **Type**: `command`
 - **Command**: `uv --directory /absolute/path/to/substack-brain-course run kb-mcp`
 
@@ -341,12 +342,12 @@ make check
 
 ## Verification checklist
 
-- [ ] `make check` passes (`ruff check .`, `mypy`, `pytest`).
-- [ ] Database migrations applied: `failures` table exists and `passages` has `uq_passages_article_chunk ... WHERE valid_to IS NULL`.
-- [ ] Conditional polling: triggering `kb/feed.poll` on subsequent runs returns 304 and increments `not_modified_count` in `cursors`.
-- [ ] Supersession: updating an article sets `valid_to` on existing chunks, inserts new chunks with `valid_to = NULL`, and emits `kb/article.updated`.
-- [ ] Search filtering: `GET /search` and `POST /ask` retrieve only active passages (`valid_to IS NULL`).
-- [ ] Failure recording: `inngest/function.failed` creates rows in the `failures` table.
-- [ ] MCP Server: `uv run kb-mcp` exposes all 8 tools over stdio.
-- [ ] Agent integration: Claude Code or Cursor connects to `living-kb` and executes `kb_health`, `kb_search`, and `kb_sync`.
+- `make check` passes (`ruff check .`, `mypy`, `pytest`).
+- Database migrations applied: `failures` table exists and `passages` has `uq_passages_article_chunk ... WHERE valid_to IS NULL`.
+- Conditional polling: triggering `kb/feed.poll` on subsequent runs returns 304 and increments `not_modified_count` in `cursors`.
+- Supersession: updating an article sets `valid_to` on existing chunks, inserts new chunks with `valid_to = NULL`, and emits `kb/article.updated`.
+- Search filtering: `GET /search` and `POST /ask` retrieve only active passages (`valid_to IS NULL`).
+- Failure recording: `inngest/function.failed` creates rows in the `failures` table.
+- MCP Server: `uv run kb-mcp` exposes all 8 tools over stdio.
+- Agent integration: Claude Code or Cursor connects to `substack-brain` and executes `kb_health`, `kb_search`, and `kb_sync`.
 

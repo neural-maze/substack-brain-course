@@ -17,6 +17,7 @@
 - [Who is this course for?](#who-is-this-course-for)
 - [Course Breakdown: Week by Week](#course-breakdown-week-by-week)
 - [Getting Started](#getting-started)
+- [Working with the project](#working-with-the-project)
 - [Week 1: Your first durable pipeline](#week-1-your-first-durable-pipeline)
 - [Week 2: Three newsletters, flow control and answers with citations](#week-2-three-newsletters-flow-control-and-answers-with-citations)
 - [Week 3: Conditional freshness, temporal supersession and an MCP server](#week-3-conditional-freshness-temporal-supersession-and-an-mcp-server)
@@ -105,16 +106,50 @@ Before diving in, make sure you have:
 1. 🐳 [Docker](https://docs.docker.com/get-docker/) running
 2. 📦 [uv](https://docs.astral.sh/uv/) installed
 3. 🔑 An [OpenAI API key](https://platform.openai.com/api-keys) with a little credit (used for embeddings; the whole of week 1 costs a few cents)
+4. 🔑 *(From week 2, optional)* An [Anthropic API key](https://console.anthropic.com/) for the answers written by `POST /ask` and `kb_ask`. Without it, they return the retrieved passages only.
 
 Then set up the project:
 
 ```bash
 git clone https://github.com/neural-maze/substack-brain-course.git
 cd substack-brain-course
-cp .env.example .env        # fill in OPENAI_API_KEY (ANTHROPIC_API_KEY can stay empty)
+cp .env.example .env        # fill in OPENAI_API_KEY (ANTHROPIC_API_KEY is optional)
 ```
 
 Each week builds on the previous one, so follow them in order!
+
+---
+
+## Working with the project
+
+### Tools for looking inside
+
+| Tool | URL | For |
+|---|---|---|
+| **Adminer** | `localhost:8081` | Browse Postgres and watch rows land in `articles` and `passages`. |
+| **Inngest dev server** | `localhost:8288` | Every function, run and step, with its timeline and retries. |
+| **Swagger UI** | `localhost:8000/docs` | Try every endpoint from the browser. |
+
+### Useful commands
+
+```bash
+make check     # lint (ruff + mypy) and tests
+make stop      # docker compose down (your data is kept)
+make db-clear  # destructive: empties every table, keeps the schema
+make reset     # destructive: docker compose down -v, drops all data
+make nuke      # destructive: reset, plus kills a stray app process on the port
+```
+
+### Repository layout
+
+- `kb/`: the pipeline (`functions/` for Inngest, `sources/` for fetch/parse/chunk/embed, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
+- `publications.yaml`: the allowlist of feeds the pipeline may ingest
+- `alembic/`: database migrations
+- `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server
+- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`: the step-by-step guides
+- `scripts/replay_backfill.py`: replays a backfill to prove ingestion is idempotent
+- `tests/`: the unit tests, which need no Docker or API keys
+- `tests/integration/`: tests that need the stack from `make start` running (they are skipped otherwise)
 
 ---
 
@@ -167,34 +202,6 @@ Each week builds on the previous one, so follow them in order!
    ```
 
    The tests live in [`tests/test_basics.py`](tests/test_basics.py). They need no Docker, database or API key and run in about a second. They cover the small functions the pipeline is built from: URL cleanup, the allowlist, chunking and RSS parsing.
-
-### Tools for looking inside
-
-| Tool | URL | For |
-|---|---|---|
-| **Adminer** | `localhost:8081` | Browse Postgres and watch rows land in `articles` and `passages`. |
-| **Inngest dev server** | `localhost:8288` | Every function, run and step, with its timeline and retries. |
-| **Swagger UI** | `localhost:8000/docs` | Try every endpoint from the browser. |
-
-### Useful commands
-
-```bash
-make check     # lint (ruff + mypy) and tests
-make stop      # docker compose down (your data is kept)
-make db-clear  # destructive: empties every table, keeps the schema
-make reset     # destructive: docker compose down -v, drops all data
-make nuke      # destructive: reset, plus kills a stray app process on the port
-```
-
-### Repository layout
-
-- `kb/`: the pipeline (`functions/` for Inngest, `sources/` for fetch/parse/chunk/embed, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
-- `publications.yaml`: the allowlist of feeds the pipeline may ingest
-- `alembic/`: database migrations
-- `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server
-- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`: the step-by-step guides
-- `scripts/replay_backfill.py`: replays a backfill to prove ingestion is idempotent
-- `tests/`: the simple tests
 
 ---
 
@@ -263,7 +270,7 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
    ```json
    {
      "mcpServers": {
-       "living-kb": {
+       "substack-brain": {
          "command": "uv",
          "args": ["--directory", "/absolute/path/to/substack-brain-course", "run", "kb-mcp"]
        }

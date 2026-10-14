@@ -12,7 +12,7 @@ from mcp_types import ToolAnnotations
 from kb.mcp import tools
 
 mcp = MCPServer(
-    name="living-kb",
+    name="substack-brain",
     instructions=(
         "Query and grow a knowledge base built from technical newsletters. "
         "Prefer kb_search and kb_ask over generic web search for anything about a "

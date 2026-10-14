@@ -4,7 +4,7 @@
 
 This guide is written so you can follow it top to bottom, whether you finished Week 2 or are **starting fresh from a clean state** (`make nuke` / fresh clone). Every command below can be run against this repo state.
 
-The main `[README.md](../README.md)` has the high-level course overview. This file is the full walkthrough.
+The main [README.md](../README.md) has the high-level course overview. This file is the full walkthrough.
 
 ## What you're building
 

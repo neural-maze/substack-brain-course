@@ -18,6 +18,8 @@
 - [Course Breakdown: Week by Week](#course-breakdown-week-by-week)
 - [Getting Started](#getting-started)
 - [Week 1: Your first durable pipeline](#week-1-your-first-durable-pipeline)
+- [Week 2: Three newsletters, flow control and answers with citations](#week-2-three-newsletters-flow-control-and-answers-with-citations)
+- [Week 3: Conditional freshness, temporal supersession and an MCP server](#week-3-conditional-freshness-temporal-supersession-and-an-mcp-server)
 - [Our Sponsor](#our-sponsor)
 - [Contributors](#contributors)
 
@@ -40,7 +42,7 @@ By the end of this course, you'll have a system capable of:
 * 📊 Measuring quality with **evals built from your own failures**, not vibes
 * 🤖 Running a bounded research agent and a weekly digest, deployed for real
 
-We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 and 2 are available now.**
+We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 3 are available now.**
 
 Excited? Let's get started!
 
@@ -89,7 +91,7 @@ Here's what the weeks look like 👇
 |:----:|:----------------|:----------:|:-------:|:--------:|
 | <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Coming soon | [Week 1](docs/week-1.md) | Coming soon |
 | <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | Coming soon | [Week 2](docs/week-2.md) | Coming soon |
-| <div align="center">3</div> | 🔄 A freshness poller and an MCP server | Coming soon | Coming soon | Coming soon |
+| <div align="center">3</div> | 🔄 A conditional freshness poller, article edits that keep citation history, a failures dataset and an MCP server | Coming soon | [Week 3](docs/week-3.md) | Coming soon |
 | <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph | Coming soon | Coming soon | Coming soon |
 | <div align="center">5</div> | 📊 An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
 | <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |
@@ -186,11 +188,11 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
 
 ### Repository layout
 
-- `kb/`: the pipeline (`functions/` for Inngest, `sources/` for fetch/parse/chunk/embed, `db/`, `retrieval/`, `schemas/`)
+- `kb/`: the pipeline (`functions/` for Inngest, `sources/` for fetch/parse/chunk/embed, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
 - `publications.yaml`: the allowlist of feeds the pipeline may ingest
 - `alembic/`: database migrations
 - `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server
-- `docs/week-1.md`, `docs/week-2.md`: the step-by-step guides
+- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`: the step-by-step guides
 - `scripts/replay_backfill.py`: replays a backfill to prove ingestion is idempotent
 - `tests/`: the simple tests
 
@@ -227,6 +229,51 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
    ```
 
 7. 🔁 **Prove replays are free**: `uv run python scripts/replay_backfill.py --verify`, then `--all`, then `--verify` again. Every count stays the same, including the number of embedding calls.
+
+---
+
+## Week 3: Conditional freshness, temporal supersession and an MCP server
+
+**Goal**: Keep the knowledge base fresh without hammering the feeds, handle article edits without breaking old citations, record every failure for the evals, and let Claude Code and Cursor use the knowledge base through MCP.
+
+### Steps:
+
+1. 📖 **Read the guide**: [`docs/week-3.md`](docs/week-3.md) explains the asymmetry principle behind the MCP tools, conditional polling with `ETag` and `Last-Modified`, temporal supersession with `valid_to`, and the `failures` table.
+2. 🚀 **Start the system** with `make start`. It applies this week's migration (the `failures` table and a partial unique index on `passages`) automatically.
+3. 🔄 **Poll the feeds twice**:
+
+   ```bash
+   curl -X POST localhost:8288/e/local -H "Content-Type: application/json" -d '{"name": "kb/feed.poll", "data": {}}'
+   ```
+
+   The first poll gets `200 OK` and saves the validators to `cursors`. The second gets `304 Not Modified` and finishes in milliseconds without downloading or parsing any feed.
+
+4. ✏️ **Simulate an article edit**: Ingest an article, change its `content_hash` in Postgres, and submit it again. The old passages get `valid_to` set, the new ones are inserted, and search only returns the current version. The guide has the exact commands.
+5. 💥 **Record a failure**:
+
+   ```bash
+   curl -X POST localhost:8288/e/local -H "Content-Type: application/json" \
+     -d '{"name": "inngest/function.failed", "data": {"error": {"message": "Simulated failure"}, "function_id": "ingest-article"}}'
+   ```
+
+   `handle-function-failed` saves it to the `failures` table, ready for the week 5 evals.
+
+6. 🔌 **Connect the MCP server**: Try it with `npx @modelcontextprotocol/inspector uv run kb-mcp`, then add it to Claude Code or Cursor:
+
+   ```json
+   {
+     "mcpServers": {
+       "living-kb": {
+         "command": "uv",
+         "args": ["--directory", "/absolute/path/to/substack-brain-course", "run", "kb-mcp"]
+       }
+     }
+   }
+   ```
+
+   Reads (`kb_search`, `kb_ask`, ...) answer in under a second. Writes (`kb_add_publication`, `kb_backfill`, `kb_sync`) send an Inngest event and return a trace URL right away.
+
+7. 🧪 **Run the tests** with `make check`. The new tests are in [`tests/test_week3.py`](tests/test_week3.py).
 
 ---
 

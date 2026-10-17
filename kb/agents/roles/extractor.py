@@ -84,3 +84,4 @@ def heuristic_extract_claims(
             break
 
     return ClaimExtractionBatch(claims=extracted)
+

@@ -215,3 +215,4 @@ async def extract_claims(ctx: inngest.Context) -> dict[str, object]:
         "claim_count": len(validated_claims),
         "dropped_spans": dropped_spans,
     }
+

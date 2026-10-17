@@ -200,3 +200,4 @@ make check
 - Editing an article sets `valid_to` on prior active claims and merges `[:SUPERSEDES]` edges in Memgraph.
 - `POST /ask` and `kb_ask` record `retriever_variant = "hybrid_3way_rrf_k60"` with graph-ranked candidates in `snapshots.retrieved`.
 - `kb_sources` (the 9th MCP tool) resolves both `claim_id` and `passage_id` to their verbatim quote and temporal validity metadata.
+

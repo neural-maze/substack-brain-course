@@ -50,3 +50,4 @@ class ValidatedClaim(BaseModel):
     claim_type: ClaimType
     confidence: float = Field(ge=0.0, le=1.0, default=0.9)
     topics: list[ExtractedTopic] = Field(min_length=1)
+

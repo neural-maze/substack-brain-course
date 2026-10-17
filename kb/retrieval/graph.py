@@ -188,3 +188,4 @@ async def search_graph_claims(
             )
 
     return results
+

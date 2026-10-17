@@ -58,3 +58,4 @@ QUERY_ENTITY_SEEDER_PROMPT = (
     "to seed a knowledge-graph traversal. Return a JSON object with a single key "
     "'entities' containing a list of short singular technical noun phrases."
 )
+

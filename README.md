@@ -21,6 +21,7 @@
 - [Week 1: Your first durable pipeline](#week-1-your-first-durable-pipeline)
 - [Week 2: Three newsletters, flow control and answers with citations](#week-2-three-newsletters-flow-control-and-answers-with-citations)
 - [Week 3: Conditional freshness, temporal supersession and an MCP server](#week-3-conditional-freshness-temporal-supersession-and-an-mcp-server)
+- [Week 4: Structured claim extraction, Memgraph ontology and three-way RRF](#week-4-structured-claim-extraction-memgraph-ontology-and-three-way-rrf)
 - [Our Sponsor](#our-sponsor)
 - [Contributors](#contributors)
 
@@ -43,7 +44,7 @@ By the end of this course, you'll have a system capable of:
 * 📊 Measuring quality with **evals built from your own failures**, not vibes
 * 🤖 Running a bounded research agent and a weekly digest, deployed for real
 
-We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 3 are available now.**
+We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 4 are available now.**
 
 Excited? Let's get started!
 
@@ -93,7 +94,7 @@ Here's what the weeks look like 👇
 | <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Coming soon | [Week 1](docs/week-1.md) | Coming soon |
 | <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | Coming soon | [Week 2](docs/week-2.md) | Coming soon |
 | <div align="center">3</div> | 🔄 A conditional freshness poller, article edits that keep citation history, a failures dataset and an MCP server | Coming soon | [Week 3](docs/week-3.md) | Coming soon |
-| <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph | Coming soon | Coming soon | Coming soon |
+| <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph, quote-span guardrail, 3-way RRF fusion and `kb_sources` | Coming soon | [Week 4](docs/week-4.md) | Coming soon |
 | <div align="center">5</div> | 📊 An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
 | <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |
 
@@ -126,8 +127,9 @@ Each week builds on the previous one, so follow them in order!
 
 | Tool | URL | For |
 |---|---|---|
-| **Adminer** | `localhost:8081` | Browse Postgres and watch rows land in `articles` and `passages`. |
+| **Adminer** | `localhost:8081` | Browse Postgres and watch rows land in `articles`, `passages`, and `claims`. |
 | **Inngest dev server** | `localhost:8288` | Every function, run and step, with its timeline and retries. |
+| **Memgraph Lab** | `localhost:3000` | Visual graph explorer for Cypher queries over `:Publication`, `:Author`, `:Article`, `:Claim`, and `:Topic` nodes. |
 | **Swagger UI** | `localhost:8000/docs` | Try every endpoint from the browser. |
 
 ### Useful commands
@@ -135,18 +137,18 @@ Each week builds on the previous one, so follow them in order!
 ```bash
 make check     # lint (ruff + mypy) and tests
 make stop      # docker compose down (your data is kept)
-make db-clear  # destructive: empties every table, keeps the schema
+make db-clear  # destructive: empties every table and Memgraph, keeps the schema
 make reset     # destructive: docker compose down -v, drops all data
 make nuke      # destructive: reset, plus kills a stray app process on the port
 ```
 
 ### Repository layout
 
-- `kb/`: the pipeline (`functions/` for Inngest, `sources/` for fetch/parse/chunk/embed, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
+- `kb/`: the pipeline (`functions/` for Inngest, `agents/` for hand-written agent steps, `graph/` for Memgraph ontology & Cypher, `sources/` for fetch/parse/chunk/embed/quote-validation, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
 - `publications.yaml`: the allowlist of feeds the pipeline may ingest
 - `alembic/`: database migrations
-- `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server
-- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`: the step-by-step guides
+- `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server, Memgraph, Memgraph Lab
+- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`, `docs/week-4.md`: the step-by-step guides
 - `scripts/replay_backfill.py`: replays a backfill to prove ingestion is idempotent
 - `tests/`: the unit tests, which need no Docker or API keys
 - `tests/integration/`: tests that need the stack from `make start` running (they are skipped otherwise)
@@ -281,6 +283,43 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
    Reads (`kb_search`, `kb_ask`, ...) answer in under a second. Writes (`kb_add_publication`, `kb_backfill`, `kb_sync`) send an Inngest event and return a trace URL right away.
 
 7. 🧪 **Run the tests** with `make check`. The new tests are in [`tests/test_week3.py`](tests/test_week3.py).
+
+---
+
+## Week 4: Structured claim extraction, Memgraph ontology and three-way RRF
+
+**Goal**: Design a strict 5-node, 5-edge knowledge graph ontology in Memgraph, verify every extracted claim against a verbatim quote span in Python before persistence, fuse 2-hop graph traversal with BM25 and pgvector via three-way RRF, and expose full claim/passage lineage through `kb_sources`.
+
+### Steps:
+
+1. 📖 **Read the guide**: [`docs/week-4.md`](docs/week-4.md) walks through Prerequisite Zero (locking the ontology before code), deterministic topic canonicalization, the hand-written agent layer (`kb/agents/`), the verbatim quote guardrail, and three-way Reciprocal Rank Fusion.
+2. 🚀 **Start the system** with `make start`. It launches Memgraph (`localhost:7687`) and Memgraph Lab (`localhost:3000`), and applies the Week 4 migration (`claims` table).
+3. 📥 **Ingest or update an article** to trigger `extract-claims`:
+
+   ```bash
+   curl -X POST localhost:8000/articles -H "Content-Type: application/json" \
+     -d '{"url": "https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven"}'
+   ```
+
+   Watch `extract-claims` run in the Inngest UI (`localhost:8288`) and emit `kb/claims.extracted`.
+4. 🕸️ **Explore the ontology in Memgraph Lab** (`http://localhost:3000`):
+
+   ```cypher
+   MATCH (a1:Author)<-[:WRITTEN_BY]-(art1:Article)-[:ASSERTS]->(c1:Claim)-[:ABOUT]->(t:Topic)<-[:ABOUT]-(c2:Claim)<-[:ASSERTS]-(art2:Article)-[:WRITTEN_BY]->(a2:Author)
+   WHERE c1.valid_to IS NULL AND c2.valid_to IS NULL AND a1.slug <> a2.slug
+   RETURN a1, art1, c1, t, c2, art2, a2 LIMIT 25;
+   ```
+
+5. ❓ **Ask a cross-publication question** and inspect provenance with `kb_sources`:
+
+   ```bash
+   curl -X POST localhost:8000/ask -H "Content-Type: application/json" \
+     -d '{"question": "How should engineers design RAG retrieval and agent orchestration in production?"}'
+
+   curl localhost:8000/sources/<cited_claim_or_passage_id>
+   ```
+
+6. 🧪 **Run the tests** with `make check`. The Week 4 unit tests live in [`tests/unit/test_ontology.py`](tests/unit/test_ontology.py), [`tests/unit/test_quote_span.py`](tests/unit/test_quote_span.py), [`tests/unit/test_rrf_three_way.py`](tests/unit/test_rrf_three_way.py), and [`tests/test_week4.py`](tests/test_week4.py); integration tests live in [`tests/integration/test_enrich_memgraph.py`](tests/integration/test_enrich_memgraph.py) and [`tests/integration/test_graph_fusion.py`](tests/integration/test_graph_fusion.py).
 
 ---
 

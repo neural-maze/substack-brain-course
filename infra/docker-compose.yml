@@ -49,5 +49,34 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  memgraph:
+    image: memgraph/memgraph-mage:latest
+    restart: unless-stopped
+    ports:
+      - "7687:7687"
+      - "7444:7444"
+    volumes:
+      - kb_memgraph_data:/var/lib/memgraph
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Teaching/inspection UI for Memgraph — open http://localhost:3000 to run
+  # Cypher queries visually and inspect the Publication/Author/Article/Claim/Topic graph.
+  memgraph-lab:
+    image: memgraph/lab:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      QUICK_CONNECT_MG_HOST: memgraph
+      QUICK_CONNECT_MG_PORT: 7687
+    depends_on:
+      - memgraph
+
 volumes:
   kb_postgres_data:
+  kb_memgraph_data:
+

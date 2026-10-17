@@ -1,8 +1,8 @@
-"""The eight week-3 MCP tools.
+"""The nine MCP tools (weeks 3–4).
 
-Fast reads (`kb_health`, `kb_search`, `kb_ask`, `kb_list_publications`) hit
-Postgres and retrieval engines directly and return in under a second — no Inngest
-run is created for them, preserving latency.
+Fast reads (`kb_health`, `kb_search`, `kb_ask`, `kb_list_publications`,
+`kb_job_status`, `kb_sources`) hit Postgres, Memgraph, and retrieval engines
+directly and return in under a second — no Inngest run is created for them.
 Slow work (`kb_add_publication`, `kb_backfill`, `kb_sync`) sends an event to
 Inngest and returns a handle immediately; progress is polled with `kb_job_status`.
 """
@@ -10,6 +10,7 @@ Inngest and returns a handle immediately; progress is polled with `kb_job_status
 from __future__ import annotations
 
 import typing
+import uuid
 
 import httpx
 import inngest
@@ -17,7 +18,11 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from kb.config import settings
-from kb.db.queries import get_job_status, list_publications_with_stats
+from kb.db.queries import (
+    get_job_status,
+    get_source_provenance,
+    list_publications_with_stats,
+)
 from kb.db.session import get_session
 from kb.functions.ask import ask_question
 from kb.health import check_health
@@ -28,10 +33,10 @@ from kb.sources.allowlist import load_publications
 
 
 async def kb_health() -> dict[str, object]:
-    """Check whether Postgres and the Inngest Dev Server are reachable.
+    """Check whether Postgres, the Inngest Dev Server, and Memgraph are reachable.
 
-    Returns article/passage counts alongside per-subsystem status
-    (`"ok"` or `"error: <detail>"`). Call this first if any other tool call
+    Returns article, passage, active claim, and topic counts alongside per-subsystem
+    status (`"ok"` or `"error: <detail>"`). Call this first if any other tool call
     fails unexpectedly — it tells you which dependency is actually down.
     """
     return await check_health()
@@ -73,12 +78,12 @@ async def kb_search(
         int, Field(default=5, ge=1, le=25, description="Max passages to return (1-25)")
     ] = 5,
 ) -> dict[str, object]:
-    """Hybrid (sparse + dense, RRF-fused) search over ingested passages.
+    """Three-way hybrid (BM25 + pgvector + Memgraph claim graph, RRF-fused) search.
 
-    Combines full-text BM25 search with pgvector semantic similarity using
-    Reciprocal Rank Fusion. Returns real, attributed passages with title,
-    author, URL, date, and text snippet. Returns `{"results": []}` when
-    nothing matches.
+    Combines full-text BM25 search, pgvector semantic similarity, and Memgraph
+    topic-to-claim traversal using Reciprocal Rank Fusion. Returns real, attributed
+    passages with title, author, URL, date, text snippet, and any matched claim metadata.
+    Returns `{"results": []}` when nothing matches.
     """
     async with get_session() as session:
         results = await hybrid.search(session, query, limit)
@@ -97,14 +102,17 @@ async def kb_ask(
         str, Field(description="Technical question to answer from the knowledge base")
     ],
 ) -> dict[str, object]:
-    """Answer a technical question using retrieved knowledge base passages with inline citations.
+    """Answer a technical question using 3-way hybrid retrieval and inline citations.
 
-    Fast read path: directly performs hybrid retrieval and LLM synthesis with
-    inline citations and as-of freshness timestamp. Never creates an Inngest run.
-    Records a retrieval snapshot for evaluation.
+    Fast read path: performs 3-way Reciprocal Rank Fusion (BM25 lexical search +
+    pgvector dense similarity + Memgraph claim graph traversal) and synthesizes an
+    answer with inline citations (`[1]`, `[2]`) and an `as_of` freshness timestamp.
+    Automatically surfaces cross-publication disagreements when authors conflict on a
+    shared topic. Never creates an Inngest run. Records a retrieval snapshot for evaluation.
     """
     async with get_session() as session:
         return await ask_question(session, question=question)
+
 
 
 async def kb_backfill(
@@ -238,3 +246,42 @@ async def kb_sync(
         "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
         "status": "poll_triggered",
     }
+
+
+async def kb_sources(
+    claim_or_passage_id: typing.Annotated[
+        str,
+        Field(
+            description=(
+                "UUID of a cited claim (`claim_id`) or passage (`passage_id`) "
+                "returned by kb_ask or kb_search"
+            )
+        ),
+    ],
+) -> dict[str, object]:
+    """Inspect full provenance, verbatim quote, and temporal validity for a cited claim or passage.
+
+    When to use `kb_sources` vs `kb_search`:
+    - Use `kb_search` to discover relevant passages by free-text query.
+    - Use `kb_sources` when you already have a specific `claim_id` or `passage_id`
+      from a citation and want to verify its exact verbatim quote (`quote_span` or
+      passage text), author, publication, epistemic `claim_type` (`opinion`,
+      `measurement`, `prediction`), canonical topics, and temporal validity
+      (`valid_from`, `valid_to`, `is_active`, `supersedes_id`).
+    """
+    try:
+        target_uuid = uuid.UUID(claim_or_passage_id.strip())
+    except ValueError as exc:
+        raise ToolError(
+            f"Invalid UUID for claim_or_passage_id={claim_or_passage_id!r}."
+        ) from exc
+
+    async with get_session() as session:
+        provenance = await get_source_provenance(session, target_uuid)
+
+    if provenance is None:
+        raise ToolError(
+            f"No claim or passage found for claim_or_passage_id={claim_or_passage_id!r}."
+        )
+    return provenance
+

@@ -20,6 +20,7 @@ import anthropic
 import inngest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from kb.agents.prompts import ASK_SYNTHESIZER_SYSTEM_PROMPT
 from kb.config import settings
 from kb.inngest_client import client
 from kb.retrieval.hybrid import hybrid_search
@@ -33,16 +34,7 @@ _anthropic_client: anthropic.AsyncAnthropic | None = None
 # holds on to can be garbage-collected before it finishes.
 _background_tasks: set[asyncio.Task[None]] = set()
 
-SYSTEM_PROMPT = (
-    "You are a precise technical research assistant answering questions from curated AI "
-    "engineering publications.\nFollow these rules strictly:\n"
-    "1. Base your answer strictly on the provided context passages.\n"
-    "2. Cite your sources inline using bracketed numbers like [1], [2] corresponding to "
-    "the passage index.\n"
-    "3. If the context is thin or missing, say clearly: 'Based on available publications, "
-    "coverage of this topic is limited.'\n"
-    "4. Do not speculate or extrapolate beyond what the passages state."
-)
+SYSTEM_PROMPT = ASK_SYNTHESIZER_SYSTEM_PROMPT
 
 
 def get_anthropic_client() -> anthropic.AsyncAnthropic | None:
@@ -61,18 +53,26 @@ def _format_context(passages: list[dict[str, Any]]) -> str:
             f"[{idx}] (Title: {p.get('title', 'Unknown')} | "
             f"Author: {p.get('author') or 'Unknown'} | URL: {p.get('url')})"
         )
-        parts.append(f"{header}\n{p.get('text', '')}")
+        body = str(p.get("text", ""))
+        if p.get("claim_text"):
+            claim_type = p.get("claim_type") or "claim"
+            body = f"Attributed Claim ({claim_type}): {p['claim_text']}\nPassage: {body}"
+        parts.append(f"{header}\n{body}")
     return "\n\n".join(parts)
 
 
 def _citation(idx: int, passage: dict[str, Any]) -> dict[str, Any]:
-    return {
+    cit: dict[str, Any] = {
         "citation_idx": idx,
         "passage_id": passage["passage_id"],
         "title": passage["title"],
         "author": passage["author"],
         "url": passage["url"],
     }
+    if passage.get("claim_id"):
+        cit["claim_id"] = passage["claim_id"]
+        cit["claim_type"] = passage.get("claim_type")
+    return cit
 
 
 def _newest_date(passages: list[dict[str, Any]]) -> datetime | None:
@@ -131,7 +131,7 @@ async def ask_question(
     session: AsyncSession, question: str, limit: int | None = None
 ) -> dict[str, Any]:
     start_time = time.perf_counter()
-    retriever_variant = f"hybrid_rrf_k{settings.rrf_k}"
+    retriever_variant = f"hybrid_3way_rrf_k{settings.rrf_k}"
 
     # 1. Hybrid retrieval: the top passages go into the prompt, ALL candidates
     #    go into the snapshot.

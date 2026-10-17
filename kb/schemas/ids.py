@@ -8,7 +8,10 @@ manual ingestion) calls through them instead of building ids ad hoc.
 from __future__ import annotations
 
 import secrets
+import uuid
 from urllib.parse import urlsplit, urlunsplit
+
+ARTICLE_CLAIM_NAMESPACE = uuid.UUID("7b9e4c1a-3d2f-4e8b-9a1c-5f6d7e8a9b0c")
 
 
 def normalize_url(url: str) -> str:
@@ -47,3 +50,21 @@ def snapshot_id() -> str:
     It joins an answer with everything recorded about it later (scores, feedback).
     """
     return f"snap_{secrets.token_urlsafe(9)}"
+
+
+def claim_id(
+    article_id: uuid.UUID | str,
+    content_hash: str,
+    quote_span: str,
+    claim_text: str,
+) -> uuid.UUID:
+    """Deterministic UUIDv5 for a claim extracted from a specific article revision.
+
+    Re-running `extract-claims` on the same article revision converges on the
+    exact same UUID in both Postgres and Memgraph.
+    """
+    norm_quote = " ".join(quote_span.split()).strip().lower()
+    norm_claim = " ".join(claim_text.split()).strip().lower()
+    seed = f"{article_id}:{content_hash}:{norm_quote}:{norm_claim}"
+    return uuid.uuid5(ARTICLE_CLAIM_NAMESPACE, seed)
+

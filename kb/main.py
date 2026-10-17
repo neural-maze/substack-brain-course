@@ -9,6 +9,7 @@ Postgres directly, because someone is waiting for them.
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -19,7 +20,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 from kb.config import settings
-from kb.db.queries import get_job_status, upsert_publication
+from kb.db.queries import get_job_status, get_source_provenance, upsert_publication
 from kb.db.session import get_session
 from kb.functions import FUNCTIONS
 from kb.functions.ask import ask_question
@@ -191,3 +192,28 @@ async def ask(payload: AskRequest) -> dict[str, Any]:
     """
     async with get_session() as session:
         return await ask_question(session, question=payload.question, limit=payload.limit)
+
+
+@app.get("/sources/{claim_or_passage_id}")
+async def get_source(claim_or_passage_id: str) -> dict[str, Any]:
+    """Resolve full provenance, verbatim quote, and temporal validity for a
+    `claim_id` or `passage_id`.
+    """
+    try:
+        target_uuid = uuid.UUID(claim_or_passage_id.strip())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid UUID for claim_or_passage_id={claim_or_passage_id!r}.",
+        ) from exc
+
+    async with get_session() as session:
+        provenance = await get_source_provenance(session, target_uuid)
+
+    if provenance is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No claim or passage found for id={claim_or_passage_id!r}.",
+        )
+    return provenance
+

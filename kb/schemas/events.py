@@ -17,6 +17,7 @@ PUBLICATION_ADDED = "kb/publication.added"
 ARTICLE_DISCOVERED = "kb/article.discovered"
 ARTICLE_INGESTED = "kb/article.ingested"
 ARTICLE_UPDATED = "kb/article.updated"
+CLAIMS_EXTRACTED = "kb/claims.extracted"
 ANSWER_PRODUCED = "kb/answer.produced"
 
 DiscoverySource = Literal["rss", "backfill", "manual", "poll"]
@@ -58,8 +59,20 @@ class ArticleUpdated(BaseModel):
     passage_count: int
 
 
+class ClaimsExtracted(BaseModel):
+    """enrich -> downstream listeners / telemetry. Summarizes claim extraction
+    and quote guardrail.
+    """
+
+    article_id: UUID
+    canonical_id: str
+    claim_count: int
+    dropped_spans: int
+
+
 class AnswerProduced(BaseModel):
     """POST /ask (fire-and-forget) -> evaluators (week 5). Points at a stored snapshot."""
 
     snapshot_id: str
     retriever_variant: str
+

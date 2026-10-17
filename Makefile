@@ -13,6 +13,10 @@ start:
 	@until [ "$$($(COMPOSE) ps -q postgres | xargs docker inspect -f '{{.State.Health.Status}}')" = "healthy" ]; do \
 		sleep 1; \
 	done
+	@echo "Waiting for memgraph to report healthy..."
+	@until [ "$$($(COMPOSE) ps -q memgraph | xargs docker inspect -f '{{.State.Health.Status}}')" = "healthy" ]; do \
+		sleep 1; \
+	done
 	uv run python -m alembic upgrade head
 	uv run python -m uvicorn kb.main:app --reload --port $(LAB_PORT)
 
@@ -46,13 +50,12 @@ nuke:
 	done
 
 # Destructive: deletes every row from every app table (not the schema —
-# migrations stay applied), without tearing down the container. Faster
-# than `reset` when you just want a clean corpus mid-session. Table list
-# is read from Postgres itself so this doesn't need updating as weeks add
-# tables.
+# migrations stay applied) and empties Memgraph, without tearing down the
+# containers. Faster than `reset` when you just want a clean corpus mid-session.
 db-clear:
 	$(COMPOSE) exec -T postgres psql -U "$${POSTGRES_USER:-substack_brain}" -d "$${POSTGRES_DB:-substack_brain}" -c \
 		"DO \$$\$$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'alembic_version') LOOP EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE'; END LOOP; END \$$\$$;"
+	$(COMPOSE) exec -T memgraph sh -c "echo 'MATCH (n) DETACH DELETE n;' | mgconsole" || true
 
 lint:
 	uv run python -m ruff check .

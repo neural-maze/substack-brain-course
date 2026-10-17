@@ -5,6 +5,7 @@ They cover the parts of week 2 that are pure logic or pure configuration:
     RRF fusion  ->  ingest-article's flow control  ->  allowlist & ids for 3 publications
 """
 
+from kb.config import Settings, settings
 from kb.functions.ingest import ingest_article
 from kb.retrieval.hybrid import compute_rrf
 from kb.schemas.ids import canonical_id, snapshot_id
@@ -67,9 +68,16 @@ def test_runs_are_throttled_globally() -> None:
 
 
 def test_manual_runs_are_shifted_ahead_and_backfill_runs_behind() -> None:
+    defaults = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert defaults.priority_manual_s == 600
+    assert defaults.priority_backfill_s == -600
     priority = _config().priority
     assert priority is not None
-    assert priority.run == "event.data.via == 'manual' ? 600 : -600"
+    expected = (
+        f"event.data.via == 'manual' ? {settings.priority_manual_s} "
+        f": {settings.priority_backfill_s}"
+    )
+    assert priority.run == expected
 
 
 def test_no_idempotency_key_so_week_1_retries_still_work() -> None:

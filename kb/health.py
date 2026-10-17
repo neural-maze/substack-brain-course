@@ -1,4 +1,4 @@
-"""Reachability checks for `GET /health` (kb/main.py)."""
+"""Reachability checks for `GET /health` (kb/main.py) and `kb_health` (kb/mcp/tools.py)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,9 @@ import httpx
 from sqlalchemy import text
 
 from kb.config import settings
-from kb.db.queries import count_articles, count_passages
+from kb.db.queries import count_active_claims, count_articles, count_passages
 from kb.db.session import get_session
+from kb.graph.client import check_memgraph_health, count_graph_entities
 
 
 async def check_health() -> dict[str, object]:
@@ -29,11 +30,18 @@ async def check_health() -> dict[str, object]:
     except httpx.HTTPError as exc:
         checks["inngest"] = f"error: {exc}"
 
-    articles = passages = 0
+    checks["memgraph"] = await check_memgraph_health()
+
+    articles = passages = claims = topics = 0
     if checks.get("database") == "ok":
         async with get_session() as session:
             articles = await count_articles(session)
             passages = await count_passages(session)
+            claims = await count_active_claims(session)
+
+    if checks.get("memgraph") == "ok":
+        graph_claims, topics = await count_graph_entities()
+        claims = max(claims, graph_claims)
 
     overall_ok = all(v == "ok" for v in checks.values())
     return {
@@ -41,4 +49,7 @@ async def check_health() -> dict[str, object]:
         **checks,
         "articles": articles,
         "passages": passages,
+        "claims": claims,
+        "topics": topics,
     }
+

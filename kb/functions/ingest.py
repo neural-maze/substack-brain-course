@@ -28,6 +28,7 @@ import inngest
 
 from kb.config import settings
 from kb.db.queries import (
+    get_active_claims_for_article,
     get_article_by_canonical_id,
     insert_passages_fresh,
     replace_passages,
@@ -111,12 +112,35 @@ async def ingest_article(ctx: inngest.Context) -> dict[str, object]:
             if existing is None:
                 return {"is_new": True, "changed": True, "article_id": None}
             if existing.content_hash == str(parsed["content_hash"]):
-                return {"is_new": False, "changed": False, "article_id": str(existing.id)}
+                active_claims = await get_active_claims_for_article(session, existing.id)
+                return {
+                    "is_new": False,
+                    "changed": False,
+                    "article_id": str(existing.id),
+                    "needs_claims": len(active_claims) == 0,
+                }
             return {"is_new": False, "changed": True, "article_id": str(existing.id)}
 
     change_info = await ctx.step.run("check-content-change", _check_content_change)
 
     if not change_info["changed"]:
+        if change_info.get("needs_claims"):
+
+            async def _emit_for_enrichment() -> dict[str, bool]:
+                ingested_event = ArticleIngested(
+                    canonical_id=payload.canonical_id,
+                    article_id=change_info["article_id"],  # type: ignore[arg-type]
+                    content_hash=str(parsed["content_hash"]),
+                    passage_count=0,
+                )
+                await client.send(
+                    inngest.Event(
+                        name=ARTICLE_INGESTED, data=ingested_event.model_dump(mode="json")
+                    )
+                )
+                return {"event_sent": True}
+
+            await ctx.step.run("emit-for-enrichment", _emit_for_enrichment)
         return {
             "article_id": str(change_info["article_id"]),
             "passage_count": 0,

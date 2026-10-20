@@ -91,9 +91,9 @@ Here's what the weeks look like 👇
 
 | Week | 🛠️ You'll build | 🧾 Article | 💻 Code | 🎥 Video |
 |:----:|:----------------|:----------:|:-------:|:--------:|
-| <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | Coming soon | [Week 1](docs/week-1.md) | Coming soon |
-| <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | Coming soon | [Week 2](docs/week-2.md) | Coming soon |
-| <div align="center">3</div> | 🔄 A conditional freshness poller, article edits that keep citation history, a failures dataset and an MCP server | Coming soon | [Week 3](docs/week-3.md) | Coming soon |
+| <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | [Week 1](https://www.theneuralmaze.com/p/durable-harnesses-for-graph-powered) | [Week 1](docs/week-1.md) | Coming soon |
+| <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | [Week 2](https://www.theneuralmaze.com/p/the-ai-engineers-guide-to-scaling) | [Week 2](docs/week-2.md) | Coming soon |
+| <div align="center">3</div> | 🔄 A conditional freshness poller, article edits that keep citation history, a failures dataset and an MCP server | [Week 3](https://theneuralmaze.substack.com/p/temporal-versioning-for-production) | [Week 3](docs/week-3.md) | Coming soon |
 | <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph, quote-span guardrail, 3-way RRF fusion and `kb_sources` | Coming soon | [Week 4](docs/week-4.md) | Coming soon |
 | <div align="center">5</div> | 📊 An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
 | <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |

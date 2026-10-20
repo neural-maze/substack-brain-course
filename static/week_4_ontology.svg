@@ -1,0 +1,306 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 610" width="100%" height="100%">
+  <defs>
+    <style>
+      .title-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 20px;
+        fill: #2C3560;
+      }
+      .node-heading {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 16.5px;
+        fill: #2C3560;
+      }
+      .prop-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 600;
+        font-size: 12.5px;
+        fill: #2C3560;
+      }
+      .badge-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 11.5px;
+        fill: #2C3560;
+      }
+      .edge-label {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 12.5px;
+        fill: #2C3560;
+      }
+      .edge-prop {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 600;
+        font-size: 11px;
+        fill: #52587A;
+      }
+    </style>
+
+    <!-- Solid dark navy arrowhead matching reference diagram -->
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#2C3560" />
+    </marker>
+
+    <!-- Olive/brown-navy arrowhead for dotted supersedes connector (matching kb/answer.produced style) -->
+    <marker id="arrow-dotted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#4A3F28" />
+    </marker>
+  </defs>
+
+  <!-- White Canvas Background -->
+  <rect width="1280" height="610" rx="18" fill="#FFFFFF" />
+
+  <!-- Top Header Banner (Slate/Lavender-Grey style from Inngest band in reference) -->
+  <rect x="32" y="22" width="1216" height="64" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+
+  <!-- Graph Icon in Header -->
+  <g transform="translate(56, 38)">
+    <circle cx="8" cy="22" r="4.5" fill="#FFFFFF" stroke="#2C3560" stroke-width="2.2" />
+    <circle cx="18" cy="7" r="4.5" fill="#FFFFFF" stroke="#2C3560" stroke-width="2.2" />
+    <circle cx="28" cy="22" r="4.5" fill="#FFFFFF" stroke="#2C3560" stroke-width="2.2" />
+    <line x1="11" y1="18" x2="15.5" y2="11" stroke="#2C3560" stroke-width="2.2" />
+    <line x1="20.5" y1="11" x2="25" y2="18" stroke="#2C3560" stroke-width="2.2" />
+    <line x1="12.5" y1="22" x2="23.5" y2="22" stroke="#2C3560" stroke-width="2.2" />
+  </g>
+  <text x="102" y="61" class="title-text">Memgraph Ontology</text>
+
+  <!-- Header Summary Pills -->
+  <rect x="342" y="38" width="148" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2" />
+  <text x="416" y="59" text-anchor="middle" class="prop-text">5 Node Labels</text>
+
+  <rect x="506" y="38" width="148" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2" />
+  <text x="580" y="59" text-anchor="middle" class="prop-text">5 Edge Types</text>
+
+  <rect x="670" y="38" width="264" height="32" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+  <text x="802" y="59" text-anchor="middle" class="badge-text">MERGE-only · valid_to IS NULL</text>
+
+  <rect x="950" y="38" width="272" height="32" rx="8" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+  <text x="1086" y="59" text-anchor="middle" class="badge-text">Verbatim quote_span verified</text>
+
+
+  <!-- ===================================================================== -->
+  <!-- 1. :Publication NODE (Top-Left, Sky Blue Palette)                     -->
+  <!-- ===================================================================== -->
+  <g transform="translate(32, 118)">
+    <!-- Outer Pastel Card -->
+    <rect x="0" y="0" width="230" height="205" rx="16" fill="#DFF4FF" stroke="#59ADD9" stroke-width="2" />
+
+    <!-- Node Header Pill -->
+    <rect x="16" y="16" width="198" height="44" rx="10" fill="#FFFFFF" stroke="#59ADD9" stroke-width="2" />
+    <!-- Publication / Feed Icon -->
+    <g transform="translate(28, 28)" fill="none" stroke="#2C3560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="18" height="20" rx="3" />
+      <line x1="4" y1="6" x2="14" y2="6" />
+      <line x1="4" y1="10" x2="14" y2="10" />
+      <line x1="4" y1="14" x2="10" y2="14" />
+    </g>
+    <text x="56" y="44" class="node-heading">:Publication</text>
+
+    <!-- Properties -->
+    <rect x="16" y="74" width="198" height="32" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.8" />
+    <rect x="24" y="80" width="32" height="20" rx="5" fill="#A6EAFE" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="40" y="94" text-anchor="middle" class="badge-text">PK</text>
+    <text x="66" y="95" class="prop-text">slug</text>
+
+    <rect x="16" y="114" width="198" height="32" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.8" />
+    <text x="30" y="135" class="prop-text">name</text>
+
+    <rect x="16" y="154" width="198" height="32" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.8" />
+    <text x="30" y="175" class="prop-text">homepage</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- 2. :Author NODE (Bottom-Left, Soft Purple Palette)                    -->
+  <!-- ===================================================================== -->
+  <g transform="translate(32, 368)">
+    <!-- Outer Pastel Card -->
+    <rect x="0" y="0" width="230" height="172" rx="16" fill="#ECDDFF" stroke="#8A4EC0" stroke-width="2" />
+
+    <!-- Node Header Pill -->
+    <rect x="16" y="16" width="198" height="44" rx="10" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="2" />
+    <!-- Author / Person Icon -->
+    <g transform="translate(28, 28)" fill="none" stroke="#2C3560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9" cy="6" r="4" />
+      <path d="M 1 19 C 1 14.5 4.5 12 9 12 C 13.5 12 17 14.5 17 19" />
+    </g>
+    <text x="56" y="44" class="node-heading">:Author</text>
+
+    <!-- Properties -->
+    <rect x="16" y="74" width="198" height="32" rx="8" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.8" />
+    <rect x="24" y="80" width="32" height="20" rx="5" fill="#E3C3FD" stroke="#8A4EC0" stroke-width="1.5" />
+    <text x="40" y="94" text-anchor="middle" class="badge-text">PK</text>
+    <text x="66" y="95" class="prop-text">slug</text>
+
+    <rect x="16" y="114" width="198" height="32" rx="8" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.8" />
+    <text x="30" y="135" class="prop-text">name</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- 3. :Article NODE (Center-Left Hub, Slate + Warm Amber Palette)        -->
+  <!-- ===================================================================== -->
+  <g transform="translate(392, 158)">
+    <!-- Outer Slate/Lavender Card -->
+    <rect x="0" y="0" width="240" height="330" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+
+    <!-- Node Header Pill -->
+    <rect x="16" y="16" width="208" height="44" rx="10" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2.2" />
+    <!-- Document Icon (exact match to ingest-article / articles icon) -->
+    <g transform="translate(28, 28)" fill="none" stroke="#2C3560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 2 0 H 12 L 17 5 V 20 H 2 Z" />
+      <path d="M 12 0 V 5 H 17" />
+      <line x1="5" y1="10" x2="13" y2="10" />
+      <line x1="5" y1="14" x2="11" y2="14" />
+    </g>
+    <text x="56" y="44" class="node-heading">:Article</text>
+
+    <!-- Properties -->
+    <rect x="16" y="74" width="208" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <rect x="24" y="80" width="32" height="20" rx="5" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.5" />
+    <text x="40" y="94" text-anchor="middle" class="badge-text">PK</text>
+    <text x="66" y="95" class="prop-text">canonical_id</text>
+
+    <rect x="16" y="114" width="208" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="30" y="135" class="prop-text">article_id</text>
+
+    <rect x="16" y="154" width="208" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="30" y="175" class="prop-text">url</text>
+
+    <rect x="16" y="194" width="208" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="30" y="215" class="prop-text">title</text>
+
+    <rect x="16" y="234" width="208" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="30" y="255" class="prop-text">published_at</text>
+
+    <rect x="16" y="274" width="208" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="30" y="295" class="prop-text">content_hash</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- 4. :Claim NODE (Center-Right, Mint Green Palette + Supersedes loop)   -->
+  <!-- ===================================================================== -->
+  <g transform="translate(752, 118)">
+    <!-- Outer Mint Green Card -->
+    <rect x="0" y="0" width="244" height="446" rx="16" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+
+    <!-- Active :Claim Header Pill -->
+    <rect x="16" y="16" width="212" height="44" rx="10" fill="#FFFFFF" stroke="#43C37E" stroke-width="2.2" />
+    <!-- Quote / Claim Icon -->
+    <g transform="translate(28, 28)" fill="none" stroke="#2C3560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 2 2 H 16 V 15 H 7 L 2 19 Z" />
+      <line x1="6" y1="7" x2="12" y2="7" />
+      <line x1="6" y1="11" x2="10" y2="11" />
+    </g>
+    <text x="54" y="44" class="node-heading">:Claim</text>
+    <rect x="144" y="26" width="74" height="24" rx="6" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="181" y="42" text-anchor="middle" class="badge-text">active</text>
+
+    <!-- Properties -->
+    <rect x="16" y="72" width="212" height="32" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <rect x="24" y="78" width="32" height="20" rx="5" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="40" y="92" text-anchor="middle" class="badge-text">PK</text>
+    <text x="66" y="93" class="prop-text">claim_id</text>
+
+    <rect x="16" y="110" width="212" height="32" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="30" y="131" class="prop-text">text · quote_span</text>
+
+    <rect x="16" y="148" width="212" height="32" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="30" y="169" class="prop-text">claim_type</text>
+
+    <rect x="16" y="186" width="212" height="32" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="30" y="207" class="prop-text">confidence</text>
+
+    <rect x="16" y="224" width="212" height="32" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="30" y="245" class="prop-text">valid_from · valid_to</text>
+
+    <!-- Dotted Temporal Supersession Edge (:Claim)-[:SUPERSEDES {at}]->(:Claim) -->
+    <line x1="122" y1="256" x2="122" y2="338" stroke="#4A3F28" stroke-width="2.2" stroke-dasharray="3,4" marker-end="url(#arrow-dotted)" />
+
+    <!-- Edge Pill for [:SUPERSEDES {at}] -->
+    <rect x="26" y="276" width="192" height="38" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="122" y="293" text-anchor="middle" class="edge-label">:SUPERSEDES</text>
+    <text x="122" y="307" text-anchor="middle" class="edge-prop">{at: timestamp}</text>
+
+    <!-- Superseded :Claim (Prior Version) -->
+    <rect x="16" y="346" width="212" height="84" rx="10" fill="#FFFFFF" stroke="#43C37E" stroke-width="2" stroke-dasharray="5,3" />
+    <g transform="translate(28, 360)" fill="none" stroke="#2C3560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 2 2 H 16 V 15 H 7 L 2 19 Z" />
+    </g>
+    <text x="54" y="376" class="node-heading">:Claim</text>
+    <rect x="132" y="358" width="86" height="24" rx="6" fill="#FCE7F3" stroke="#D9468F" stroke-width="1.5" />
+    <text x="175" y="374" text-anchor="middle" class="badge-text">history</text>
+    <text x="28" y="405" class="edge-prop">valid_to != null</text>
+    <text x="28" y="421" class="edge-prop">(superseded on edit)</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- 5. :Topic NODE (Far-Right Bridge Hub, Soft Rose/Magenta Palette)      -->
+  <!-- ===================================================================== -->
+  <g transform="translate(1098, 158)">
+    <!-- Outer Pastel Rose/Pink Card -->
+    <rect x="0" y="0" width="150" height="210" rx="16" fill="#FCE7F3" stroke="#D9468F" stroke-width="2" />
+
+    <!-- Node Header Pill -->
+    <rect x="14" y="16" width="122" height="44" rx="10" fill="#FFFFFF" stroke="#D9468F" stroke-width="2.2" />
+    <!-- Topic Hub Icon (matches RRF triad icon in reference) -->
+    <g transform="translate(22, 27)" fill="none" stroke="#2C3560" stroke-width="2">
+      <circle cx="9" cy="4" r="3" />
+      <circle cx="3" cy="16" r="3" />
+      <circle cx="15" cy="16" r="3" />
+      <line x1="7.5" y1="6.5" x2="4.5" y2="13.5" />
+      <line x1="10.5" y1="6.5" x2="13.5" y2="13.5" />
+      <line x1="6" y1="16" x2="12" y2="16" />
+    </g>
+    <text x="48" y="44" class="node-heading">:Topic</text>
+
+    <!-- Properties -->
+    <rect x="14" y="76" width="122" height="32" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.8" />
+    <rect x="20" y="82" width="30" height="20" rx="5" fill="#FBCFE8" stroke="#D9468F" stroke-width="1.5" />
+    <text x="35" y="96" text-anchor="middle" class="badge-text">PK</text>
+    <text x="58" y="97" class="prop-text">slug</text>
+
+    <rect x="14" y="118" width="122" height="32" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.8" />
+    <text x="26" y="139" class="prop-text">name</text>
+
+    <!-- Canonical Bridge Note -->
+    <rect x="14" y="160" width="122" height="34" rx="8" fill="#FBCFE8" stroke="#D9468F" stroke-width="1.5" />
+    <text x="75" y="181" text-anchor="middle" class="badge-text">shared hub</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- DIRECTED EDGES & LABELS                                               -->
+  <!-- ===================================================================== -->
+
+  <!-- 1. (:Article)-[:PUBLISHED_IN]->(:Publication) -->
+  <path d="M 392 246 L 341 246 Q 327 246 327 232 L 327 202 Q 327 188 313 188 L 266 188"
+        fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+  <rect x="272" y="142" width="114" height="28" rx="7" fill="#DFF4FF" stroke="#59ADD9" stroke-width="1.8" />
+  <text x="329" y="161" text-anchor="middle" class="edge-label">:PUBLISHED_IN</text>
+
+  <!-- 2. (:Article)-[:WRITTEN_BY]->(:Author) -->
+  <path d="M 392 386 L 341 386 Q 327 386 327 400 L 327 434 Q 327 448 313 448 L 266 448"
+        fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+  <rect x="276" y="464" width="106" height="28" rx="7" fill="#ECDDFF" stroke="#8A4EC0" stroke-width="1.8" />
+  <text x="329" y="483" text-anchor="middle" class="edge-label">:WRITTEN_BY</text>
+
+  <!-- 3. (:Article)-[:ASSERTS]->(:Claim) -->
+  <path d="M 632 246 L 748 246"
+        fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+  <rect x="648" y="206" width="88" height="28" rx="7" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.8" />
+  <text x="692" y="225" text-anchor="middle" class="edge-label">:ASSERTS</text>
+
+  <!-- 4. (:Claim)-[:ABOUT]->(:Topic) -->
+  <path d="M 996 246 L 1094 246"
+        fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+  <rect x="1009" y="206" width="76" height="28" rx="7" fill="#FCE7F3" stroke="#D9468F" stroke-width="1.8" />
+  <text x="1047" y="225" text-anchor="middle" class="edge-label">:ABOUT</text>
+
+</svg>
+

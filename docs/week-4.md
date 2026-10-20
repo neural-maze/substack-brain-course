@@ -84,13 +84,20 @@ You should see `"database": "ok"`, `"inngest": "ok"`, and `"memgraph": "ok"`, al
 
 Whenever `ingest-article` finishes ingesting a new article (`kb/article.ingested`) or updating an edited one (`kb/article.updated`), Inngest automatically triggers `extract-claims` (`kb/functions/enrich.py`).
 
-Ingest an article (or trigger a backfill):
+If you are starting from an empty database (and don't want to wait 5 minutes for the `poll-feeds` cron), backfill the three newsletters (or ingest a single article):
 
 ```bash
-curl -X POST http://localhost:8000/articles \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.theneuralmaze.com/p/the-complete-guide-to-event-driven"}'
+curl -X POST http://localhost:8000/publications -H "Content-Type: application/json" \
+  -d '{"feed_url": "https://theneuralmaze.com/feed"}'
+
+curl -X POST http://localhost:8000/publications -H "Content-Type: application/json" \
+  -d '{"feed_url": "https://www.decodingai.com/feed"}'
+
+curl -X POST http://localhost:8000/publications -H "Content-Type: application/json" \
+  -d '{"feed_url": "https://magazine.sebastianraschka.com/feed"}'
 ```
+
+> **Tip:** Set `PRIORITY_BACKFILL_S=0` in `.env` if you want backfill runs to start immediately instead of waiting behind the 10-minute (`-600s`) priority window.
 
 Open the Inngest Dev Server UI at `http://localhost:8288`:
 1. `ingest-article` runs and emits `kb/article.ingested`.
@@ -116,21 +123,43 @@ Every stored claim has a deterministic UUIDv5 (`kb/schemas/ids.py:claim_id`), so
 
 ## Step 3 — Explore the graph in Memgraph Lab (`localhost:3000`)
 
-Open `http://localhost:3000` in your browser (Memgraph Lab connects automatically to `memgraph:7687`).
+Open `http://localhost:3000` in your browser (Memgraph Lab connects automatically to `memgraph:7687`) and try these three queries in the **Query Execution** tab:
 
-Run the cross-publication traversal query in the Query Execution tab:
-
+### 1. Visual graph of the 5-node ontology (switch to the **Graph** view tab)
 ```cypher
-// Traverse: Author 1 -> Article -> Claim -> Shared Topic <- Claim <- Article <- Author 2
-MATCH (a1:Author)<-[:WRITTEN_BY]-(art1:Article)-[:ASSERTS]->(c1:Claim)-[:ABOUT]->(t:Topic)<-[:ABOUT]-(c2:Claim)<-[:ASSERTS]-(art2:Article)-[:WRITTEN_BY]->(a2:Author)
+MATCH (p:Publication)<-[:PUBLISHED_IN]-(art:Article)-[:ASSERTS]->(c:Claim)-[:ABOUT]->(t:Topic)
+OPTIONAL MATCH (art)-[:WRITTEN_BY]->(au:Author)
+WHERE c.valid_to IS NULL
+RETURN p, au, art, c, t
+LIMIT 50;
+```
+
+### 2. Shared `:Topic` hubs connecting different articles and authors
+```cypher
+MATCH (art1:Article)-[:ASSERTS]->(c1:Claim)-[:ABOUT]->(t:Topic)<-[:ABOUT]-(c2:Claim)<-[:ASSERTS]-(art2:Article)
+OPTIONAL MATCH (art1)-[:WRITTEN_BY]->(a1:Author)
+OPTIONAL MATCH (art2)-[:WRITTEN_BY]->(a2:Author)
 WHERE c1.valid_to IS NULL
   AND c2.valid_to IS NULL
-  AND a1.slug <> a2.slug
+  AND art1.canonical_id < art2.canonical_id
 RETURN a1, art1, c1, t, c2, art2, a2
 LIMIT 25;
 ```
 
-Because `kb/graph/ontology.py` normalizes surface variations (`"RAG"`, `"rag"`, `"Retrieval-Augmented Generation"` $\rightarrow$ `:Topic {slug: "rag"}`), claims from different newsletters converge on shared `:Topic` hubs.
+### 3. Top canonical `:Topic` hubs ranked by number of active claims & publications
+```cypher
+MATCH (p:Publication)<-[:PUBLISHED_IN]-(art:Article)-[:ASSERTS]->(c:Claim)-[:ABOUT]->(t:Topic)
+WHERE c.valid_to IS NULL
+RETURN t.slug AS topic_slug,
+       t.name AS topic_name,
+       count(DISTINCT c) AS active_claims,
+       count(DISTINCT art) AS articles,
+       collect(DISTINCT p.slug) AS publications
+ORDER BY active_claims DESC, articles DESC
+LIMIT 15;
+```
+
+Because `kb/graph/ontology.py` normalizes surface variations (`"RAG"`, `"rag"`, `"Retrieval-Augmented Generation"` $\rightarrow$ `:Topic {slug: "rag"}`), claims from different articles and newsletters converge on shared `:Topic` hubs.
 
 ---
 

@@ -101,7 +101,7 @@ async def test_run_agent_wraps_call_in_inngest_step_and_validates_schema() -> No
                     ]
                 },
                 "usage": {
-                    "model": "claude-sonnet-4-20250514",
+                    "model": "claude-sonnet-5-5",
                     "input_tokens": 120,
                     "output_tokens": 45,
                     "est_usd": 0.001035,
@@ -112,7 +112,7 @@ async def test_run_agent_wraps_call_in_inngest_step_and_validates_schema() -> No
         name="test-extractor",
         role="Test Extractor",
         system_prompt="Extract claims.",
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-5-5",
         output_schema=ClaimExtractionBatch,
     )
 

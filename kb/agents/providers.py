@@ -96,8 +96,8 @@ async def call_llm(
     article_id: uuid.UUID | None = None,
     persist_cost: bool = False,
 ) -> dict[str, Any]:
-    """Invoke Anthropic Claude (with structured tool output when `output_schema`
-    is provided) and return `{"output": ..., "usage": {...}}`.
+    """Invoke Anthropic Claude (with native JSON schema `output_config` when
+    `output_schema` is provided) and return `{"output": ..., "usage": {...}}`.
     """
     llm = get_anthropic_client()
     if llm is None:
@@ -113,14 +113,12 @@ async def call_llm(
     }
 
     if output_schema is not None:
-        kwargs["tools"] = [
-            {
-                "name": "structured_output",
-                "description": f"Return structured output conforming to {output_schema.__name__}.",
-                "input_schema": output_schema.model_json_schema(),
+        kwargs["output_config"] = {
+            "format": {
+                "type": "json_schema",
+                "schema": anthropic.transform_schema(output_schema),
             }
-        ]
-        kwargs["tool_choice"] = {"type": "tool", "name": "structured_output"}
+        }
 
     response = await llm.messages.create(**kwargs)
 

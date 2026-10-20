@@ -164,7 +164,10 @@ async def extract_claims(ctx: inngest.Context) -> dict[str, object]:
     supersedes_pairs = cast("list[dict[str, str]]", pg_result["supersedes_pairs"])
 
     async def _sync_claims_memgraph() -> dict[str, int]:
-        author_node = normalize_author(cast("str | None", article_data.get("author")))
+        raw_author = cast("str | None", article_data.get("author")) or str(
+            article_data["pub_name"]
+        )
+        author_node = normalize_author(raw_author)
         graph_claims = [
             {
                 **c,

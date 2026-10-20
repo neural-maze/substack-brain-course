@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     memgraph_uri: str = "bolt://localhost:7687"
     memgraph_user: str = ""
     memgraph_password: str = ""
-    extraction_model: str = "claude-sonnet-4-20250514"
+    extraction_model: str = "claude-sonnet-5-5"
     extraction_max_tokens: int = 4096
     graph_retrieval_limit: int = 15
     concurrency_extract_claims: int = 2

@@ -93,7 +93,7 @@ RETURN c.claim_id AS claim_id,
        pub.slug AS publication_slug,
        collect(DISTINCT t.slug) AS matched_topic_slugs,
        count(DISTINCT t) AS matched_topics
-ORDER BY matched_topics DESC, c.confidence DESC, art.published_at DESC, c.claim_id ASC
+ORDER BY matched_topics DESC, confidence DESC, published_at DESC, claim_id ASC
 LIMIT $limit
 """
 

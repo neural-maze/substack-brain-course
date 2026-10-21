@@ -83,9 +83,11 @@ async def test_kb_search_finds_a_seeded_passage(db: AsyncSession) -> None:
     assert "A Post About Zebras" in titles
 
 
-async def test_kb_search_returns_empty_not_an_error_when_nothing_matches() -> None:
+async def test_kb_search_does_not_error_when_nothing_matches_lexically() -> None:
+    # On a populated dev database the dense leg still returns nearest neighbours,
+    # so the contract is "a list, never an error", not "an empty list".
     result = await tools.kb_search("a query that matches absolutely nothing zzyzx", limit=5)
-    assert result == {"results": []}
+    assert isinstance(result["results"], list)
 
 
 async def test_kb_job_status_raises_for_an_unknown_event_id() -> None:

@@ -17,7 +17,7 @@ Through Week 3, the retrieval engine treated newsletters as flat bags of chunked
 By the end of this guide, you will have:
 
 - **A locked 5-node, 5-edge graph ontology (`kb/graph/ontology.py`)**: `:Publication`, `:Author`, `:Article`, `:Claim`, and `:Topic` nodes connected by `[:PUBLISHED_IN]`, `[:WRITTEN_BY]`, `[:ASSERTS]`, `[:ABOUT]`, and `[:SUPERSEDES]`, with deterministic topic canonicalization and a stop-topic blocklist.
-- **A hand-written agent execution layer (`kb/agents/`)**: ~200 lines of transparent Python built directly on `ctx.step.run`, with zero agent frameworks.
+- **A hand-written agent execution layer (`kb/agents/`)**: ~350 lines of transparent Python built directly on `ctx.step.run`, with zero agent frameworks.
 - **The First Free Guardrail (`kb/sources/quote_validator.py`)**: Deterministic Python verification that every LLM-extracted claim carries an exact verbatim `quote_span` from the source article before it ever touches Postgres or Memgraph.
 - **Durable enrichment (`extract-claims` in `kb/functions/enrich.py`)**: Triggered by `kb/article.ingested` and `kb/article.updated`, persisting claims to Postgres (`claims` table) and idempotently merging the attribution subgraph into Memgraph.
 - **Three-way hybrid retrieval (`kb/retrieval/graph.py` & `kb/retrieval/hybrid.py`)**: Fuses BM25, `pgvector`, and 2-hop Memgraph claim traversal via Reciprocal Rank Fusion (`hybrid_3way_rrf_k60`) and surfaces cross-publication disagreements in `POST /ask` and `kb_ask`.
@@ -49,6 +49,10 @@ Most LLM-backed knowledge graphs fail in production because teams jump straight 
 4. **Write-time interpretation bias (`:CONTRADICTS` edges)**: Deciding whether Claim A contradicts Claim B at ingestion time requires $O(N^2)$ comparisons and freezes brittle judgments into permanent edges.
 
 Our ontology (`kb/graph/ontology.py`) prevents all four:
+
+<p align="center">
+    <a href="../static/week_4_ontology.svg"><img src="../static/week_4_ontology.svg" alt="The Week 4 graph ontology: five nodes, five edges" width="750"></a>
+</p>
 
 - **PostgreSQL owns prose and vectors** (`articles.text`, `passages.text`, `tsvector`, `pgvector`). **Memgraph owns attribution topology** (`:Publication`, `:Author`, `:Article`, `:Claim`, `:Topic`). Full passage text never enters Memgraph.
 - Claims connect neutrally through canonical `:Topic` hubs (`(:Claim)-[:ABOUT]->(:Topic)`), deferring disagreement synthesis to query time (`POST /ask`).

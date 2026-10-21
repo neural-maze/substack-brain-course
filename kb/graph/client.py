@@ -26,7 +26,7 @@ from kb.graph.cypher import (
 try:
     from neo4j import AsyncGraphDatabase
 except ImportError:  # pragma: no cover
-    AsyncGraphDatabase = None
+    AsyncGraphDatabase = None  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
 

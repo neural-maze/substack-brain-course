@@ -288,6 +288,10 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
 
 ## Week 4: Structured claim extraction, Memgraph ontology and three-way RRF
 
+<p align="center">
+    <a href="static/week_4_ontology.svg"><img src="static/week_4_ontology.svg" alt="The Week 4 graph ontology: five nodes, five edges" width="750"></a>
+</p>
+
 **Goal**: Design a strict 5-node, 5-edge knowledge graph ontology in Memgraph, verify every extracted claim against a verbatim quote span in Python before persistence, fuse 2-hop graph traversal with BM25 and pgvector via three-way RRF, and expose full claim/passage lineage through `kb_sources`.
 
 ### Steps:

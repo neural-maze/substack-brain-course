@@ -1,0 +1,85 @@
+# Failure Taxonomy for The Substack Brain (Week 5)
+# Built via Hamel Husain's Error Analysis methodology:
+#   1. Open Coding: Unconstrained human notes on 40 real snapshots & failure rows
+#   2. Axial Coding: Clustered into 6 non-overlapping failure categories
+#   3. Evaluator Selection: Deterministic code checks first, binary LLM judges second
+
+version: "1.0"
+methodology: "open_and_axial_coding"
+failure_modes:
+  - code: "FM-1"
+    slug: "phantom_or_dangling_citation"
+    layer: "synthesis"
+    evaluator_type: "deterministic_code"
+    description: >
+      The synthesized answer includes an inline citation marker [k] outside the
+      bounds of the provided passages (1..N), cites a [k] that is missing from
+      the structured citations list, or attaches a citation whose passage_id does
+      not exist in snapshots.retrieved.
+    example_open_code_note: >
+      Answer cited [6] for the claim about pgvector HNSW indexes, but only 5
+      passages were passed to the prompt.
+
+  - code: "FM-2"
+    slug: "stale_revision_cited"
+    layer: "retrieval_and_graph"
+    evaluator_type: "deterministic_code"
+    description: >
+      A cited passage or attributed claim has `valid_to IS NOT NULL` (it was
+      superseded by an article edit via Week 3/4 temporal supersession).
+    example_open_code_note: >
+      Passage [1] came from a superseded revision of the article before the author
+      updated the chunking overlap recommendation.
+
+  - code: "FM-3"
+    slug: "ungrounded_speculation_on_empty"
+    layer: "synthesis"
+    evaluator_type: "deterministic_and_binary_judge"
+    description: >
+      The retriever returned zero passages (or thin off-topic context), yet the
+      synthesizer answered from pre-training memory or omitted citations altogether
+      instead of abstaining with limited-coverage notice.
+    example_open_code_note: >
+      Retriever returned 0 passages for Kubernetes ingress controllers, but the
+      model wrote three uncited paragraphs from general knowledge.
+
+  - code: "FM-4"
+    slug: "unfaithful_claim_or_epistemic_inflation"
+    layer: "synthesis"
+    evaluator_type: "binary_llm_judge"
+    judge_name: "faithfulness-judge"
+    description: >
+      The answer asserts a fact that contradicts or is absent from its cited
+      passage [k], attributes a claim to the wrong author/publication, or inflates
+      an author's 'opinion' or 'prediction' into an empirical 'measurement'.
+    example_open_code_note: >
+      Passage [1] was tagged as an 'opinion' that small models might replace routers,
+      but the answer stated 'Benchmarks prove small models reduce latency by 47% [1]'.
+
+  - code: "FM-5"
+    slug: "missed_cross_pub_disagreement"
+    layer: "synthesis"
+    evaluator_type: "binary_llm_judge"
+    judge_name: "disagreement-judge"
+    description: >
+      snapshots.retrieved contains conflicting claims from two or more authors or
+      publications on the same canonical topic, but the synthesizer presents only
+      one perspective as settled consensus and ignores the counter-claim.
+    example_open_code_note: >
+      Retrieved passages included both Miguel (The Neural Maze) arguing RRF avoids
+      reranker latency and Paul (Decoding AI) arguing cross-encoder rerankers are
+      essential, but the answer only cited [1] and ignored [2].
+
+  - code: "FM-6"
+    slug: "lexical_or_relational_retrieval_miss"
+    layer: "retrieval"
+    evaluator_type: "deterministic_retrieval_metric"
+    description: >
+      The relevant passage or cross-publication claim exists in Postgres/Memgraph
+      but failed to land in the top-k retrieved candidates (e.g., dense search
+      missed an exact identifier like `create_function`, or 2-way RRF missed a
+      2-hop `:Topic` bridge across newsletters).
+    example_open_code_note: >
+      Dense vector search ranked general workflow prose above the exact passage
+      containing `inngest.Throttle` and `create_function`.
+

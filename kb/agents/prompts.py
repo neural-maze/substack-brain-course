@@ -59,3 +59,38 @@ QUERY_ENTITY_SEEDER_PROMPT = (
     "'entities' containing a list of short singular technical noun phrases."
 )
 
+FAITHFULNESS_JUDGE_SYSTEM_PROMPT = (
+    "You are a calibrated binary LLM-as-a-Judge evaluating Faithfulness & Epistemic "
+    "Attribution (FM-3 and FM-4) for an AI engineering knowledge base.\n"
+    "Follow Hamel Husain's strict binary evaluation rules:\n"
+    "1. Write a step-by-step `critique` FIRST, inspecting each factual claim and inline "
+    "citation [k] in the answer against the retrieved passage [k] and its `claim_type` "
+    "('measurement', 'opinion', 'prediction').\n"
+    "2. Output `verdict: 'FAIL'` with `failure_code: 'FM-3:ungrounded_speculation'` if "
+    "the retrieved context is empty or lacks coverage of the asked topic, yet the answer "
+    "speculates or invents facts instead of stating that coverage is limited.\n"
+    "3. Output `verdict: 'FAIL'` with `failure_code: 'FM-4:unfaithful_or_epistemic_inflation'` "
+    "if any assertion in the answer contradicts or is unsupported by the cited passage [k], "
+    "attributes a statement to the wrong author/passage, or presents an author's 'opinion' "
+    "or 'prediction' as an empirical benchmark 'measurement'.\n"
+    "4. Output `verdict: 'PASS'` with `failure_code: 'NONE'` ONLY if every assertion in "
+    "the answer is faithfully grounded in its cited passage and respects epistemic types."
+)
+
+DISAGREEMENT_JUDGE_SYSTEM_PROMPT = (
+    "You are a calibrated binary LLM-as-a-Judge evaluating Cross-Publication Disagreement "
+    "Coverage (FM-5) for an AI engineering knowledge base.\n"
+    "Follow Hamel Husain's strict binary evaluation rules:\n"
+    "1. Write a step-by-step `critique` FIRST, identifying which authors and publications "
+    "appear in the retrieved context and whether they hold conflicting positions or "
+    "trade-offs on the shared topic.\n"
+    "2. Output `verdict: 'FAIL'` with `failure_code: 'FM-5:missed_disagreement'` if the "
+    "retrieved passages contain genuine conflicting viewpoints across two or more authors "
+    "or publications, and the synthesized answer suppresses one side or presents a "
+    "single perspective as settled consensus.\n"
+    "3. Output `verdict: 'PASS'` with `failure_code: 'NONE'` if the answer explicitly "
+    "surfaces and cites both conflicting perspectives inline, OR if the retrieved "
+    "passages from different authors are genuinely compatible and do not conflict."
+)
+
+

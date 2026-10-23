@@ -22,6 +22,7 @@
 - [Week 2: Three newsletters, flow control and answers with citations](#week-2-three-newsletters-flow-control-and-answers-with-citations)
 - [Week 3: Conditional freshness, temporal supersession and an MCP server](#week-3-conditional-freshness-temporal-supersession-and-an-mcp-server)
 - [Week 4: Structured claim extraction, Memgraph ontology and three-way RRF](#week-4-structured-claim-extraction-memgraph-ontology-and-three-way-rrf)
+- [Week 5: An evaluation suite built from your system's failures](#week-5-an-evaluation-suite-built-from-your-systems-failures)
 - [Our Sponsor](#our-sponsor)
 - [Contributors](#contributors)
 
@@ -44,7 +45,7 @@ By the end of this course, you'll have a system capable of:
 * 📊 Measuring quality with **evals built from your own failures**, not vibes
 * 🤖 Running a bounded research agent and a weekly digest, deployed for real
 
-We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 4 are available now.**
+We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 5 are available now.**
 
 Excited? Let's get started!
 
@@ -95,7 +96,7 @@ Here's what the weeks look like 👇
 | <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | [Week 2](https://www.theneuralmaze.com/p/the-ai-engineers-guide-to-scaling) | [Week 2](docs/week-2.md) | Coming soon |
 | <div align="center">3</div> | 🔄 A conditional freshness poller, article edits that keep citation history, a failures dataset and an MCP server | [Week 3](https://theneuralmaze.substack.com/p/temporal-versioning-for-production) | [Week 3](docs/week-3.md) | Coming soon |
 | <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph, quote-span guardrail, 3-way RRF fusion and `kb_sources` | Coming soon | [Week 4](docs/week-4.md) | Coming soon |
-| <div align="center">5</div> | 📊 An evaluation suite built from your system's failures | Coming soon | Coming soon | Coming soon |
+| <div align="center">5</div> | 📊 An evaluation suite built from your system's failures: open/axial coding, deterministic guardrails, TPR/TNR calibrated binary judges, and Inngest variant experiments | Coming soon | [Week 5](docs/week-5.md) | Coming soon |
 | <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |
 
 ---
@@ -144,12 +145,13 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
 
 ### Repository layout
 
-- `kb/`: the pipeline (`functions/` for Inngest, `agents/` for hand-written agent steps, `graph/` for Memgraph ontology & Cypher, `sources/` for fetch/parse/chunk/embed/quote-validation, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
+- `kb/`: the pipeline (`functions/` for Inngest, `agents/` for hand-written agent steps, `graph/` for Memgraph ontology & Cypher, `evals/` for deterministic checks, binary LLM judges & TPR/TNR calibration, `sources/` for fetch/parse/chunk/embed/quote-validation, `db/`, `retrieval/`, `schemas/`, `mcp/` for the MCP server)
+- `evals/`: failure taxonomy (`taxonomy.yaml`), human-labeled traces (`labeled_traces.jsonl`), and the retrieval variant benchmark (`golden_benchmark.yaml`)
 - `publications.yaml`: the allowlist of feeds the pipeline may ingest
 - `alembic/`: database migrations
 - `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server, Memgraph, Memgraph Lab
-- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`, `docs/week-4.md`: the step-by-step guides
-- `scripts/replay_backfill.py`: replays a backfill to prove ingestion is idempotent
+- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`, `docs/week-4.md`, `docs/week-5.md`: the step-by-step guides
+- `scripts/replay_backfill.py` & `scripts/calibrate_judges.py`: replay verifier and TPR/TNR binary judge calibration CLI
 - `tests/`: the unit tests, which need no Docker or API keys
 - `tests/integration/`: tests that need the stack from `make start` running (they are skipped otherwise)
 
@@ -324,6 +326,42 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
    ```
 
 6. 🧪 **Run the tests** with `make check`. The Week 4 unit tests live in [`tests/unit/test_ontology.py`](tests/unit/test_ontology.py), [`tests/unit/test_quote_span.py`](tests/unit/test_quote_span.py), [`tests/unit/test_rrf_three_way.py`](tests/unit/test_rrf_three_way.py), and [`tests/test_week4.py`](tests/test_week4.py); integration tests live in [`tests/integration/test_enrich_memgraph.py`](tests/integration/test_enrich_memgraph.py) and [`tests/integration/test_graph_fusion.py`](tests/integration/test_graph_fusion.py).
+
+---
+
+## Week 5: An evaluation suite built from your system's failures
+
+**Goal**: Replace generic "helpfulness" scores with Hamel Husain's bottom-up error analysis (Open Coding $\rightarrow$ Axial Coding), run zero-cost deterministic code assertions before narrow binary `PASS`/`FAIL` LLM judges, calibrate judge alignment with True Positive Rate (TPR) and True Negative Rate (TNR) $\ge 0.90$, and execute online answer scoring (`evaluate-answer`) and multi-variant retrieval benchmarks (`run-eval-suite`) as durable Inngest steps.
+
+### Steps:
+
+1. 📖 **Read the guide**: [`docs/week-5.md`](docs/week-5.md) walks through open & axial coding over `snapshots` and `failures`, the 6-category failure taxonomy (`FM-1`–`FM-6`), deterministic checks vs. binary LLM judges, TPR/TNR calibration, and durable Inngest evaluation workflows.
+2. 🚀 **Start the system** with `make start`. It applies the Week 5 migration (`eval_results` and `eval_runs` tables).
+3. 🎯 **Calibrate the binary judges**:
+
+   ```bash
+   uv run python scripts/calibrate_judges.py --mode offline
+   # Or against live Anthropic:
+   uv run python scripts/calibrate_judges.py --mode live
+   ```
+
+4. 💬 **Ask a question and watch `evaluate-answer` populate `snapshots.confidence`**:
+
+   ```bash
+   curl -X POST localhost:8000/ask -H "Content-Type: application/json" \
+     -d '{"question": "How do durable execution engines handle failure recovery compared to traditional queues?"}'
+   ```
+
+5. 📊 **Run the multi-variant evaluation suite (`sparse` vs `dense` vs `2-way RRF` vs `3-way RRF`)**:
+
+   ```bash
+   curl -X POST localhost:8000/evals/run -H "Content-Type: application/json" \
+     -d '{"suite_name": "golden_v1", "include_failures_table": true}'
+
+   curl localhost:8000/evals/latest
+   ```
+
+6. 🧪 **Run the tests** with `make check`. The Week 5 unit tests live in [`tests/unit/test_deterministic_evals.py`](tests/unit/test_deterministic_evals.py), [`tests/unit/test_judge_calibration.py`](tests/unit/test_judge_calibration.py), and [`tests/test_week5.py`](tests/test_week5.py); integration tests live in [`tests/integration/test_evals_pipeline.py`](tests/integration/test_evals_pipeline.py).
 
 ---
 

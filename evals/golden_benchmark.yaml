@@ -1,0 +1,174 @@
+# Self-contained retrieval & variant experiment fixture (Week 5, Option A)
+# Used by `run-eval-suite` (`kb/functions/evals.py`) to compare:
+#   - sparse_bm25
+#   - dense_pgvector
+#   - hybrid_2way_rrf_k60
+#   - hybrid_3way_rrf_k60
+# Works deterministically out of the box even on a fresh clone with an empty DB.
+
+suite_name: "golden_v1"
+k: 5
+
+corpus:
+  - passage_id: "p-nm-01"
+    canonical_id: "pub:the-neural-maze:durable-harnesses"
+    publication: "the-neural-maze"
+    author: "Miguel Otero Pedrido"
+    title: "Durable Harnesses for Graph-Powered AI"
+    url: "https://www.theneuralmaze.com/p/durable-harnesses-for-graph-powered"
+    published_at: "2026-09-10T10:00:00Z"
+    text: >
+      Inngest functions use `@client.create_function` and `ctx.step.run` to memoize
+      every step output. When `embed_texts` fails mid-run, earlier steps like
+      `fetch-html` and `chunk` are never re-executed on retry.
+    claim_id: "c-nm-01"
+    claim_text: "Inngest memoizes step outputs via ctx.step.run so retries skip completed steps."
+    claim_type: "measurement"
+    topics: ["inngest", "durable-execution"]
+    semantic_tags: ["workflow recovery", "checkpointing", "fault tolerance", "step memoization"]
+
+  - passage_id: "p-nm-02"
+    canonical_id: "pub:the-neural-maze:scaling-retrieval"
+    publication: "the-neural-maze"
+    author: "Miguel Otero Pedrido"
+    title: "The AI Engineer's Guide to Scaling Retrieval"
+    url: "https://www.theneuralmaze.com/p/the-ai-engineers-guide-to-scaling"
+    published_at: "2026-09-17T10:00:00Z"
+    text: >
+      Reciprocal Rank Fusion (RRF) merges BM25 `ts_rank` and `pgvector` cosine
+      similarity using `1 / (k + rank)` with `k = 60`, while `inngest.Throttle`
+      and `priority_manual_s = 600` prevent backfill starvation.
+    claim_id: "c-nm-02"
+    claim_text: "Three-way RRF often removes the need for a cross-encoder reranker in latency-sensitive RAG."
+    claim_type: "opinion"
+    topics: ["reciprocal-rank-fusion", "reranker", "rag"]
+    semantic_tags: ["hybrid search fusion", "rank aggregation", "queue priority", "rate limiting"]
+
+  - passage_id: "p-nm-03"
+    canonical_id: "pub:the-neural-maze:temporal-versioning"
+    publication: "the-neural-maze"
+    author: "Miguel Otero Pedrido"
+    title: "Temporal Versioning for Production Knowledge Bases"
+    url: "https://theneuralmaze.substack.com/p/temporal-versioning-for-production"
+    published_at: "2026-09-24T10:00:00Z"
+    text: >
+      Partial unique index `uq_passages_article_chunk WHERE valid_to IS NULL`
+      allows temporal supersession on article edits without deleting historical
+      citations, while `If-None-Match` ETag headers yield `304 Not Modified`.
+    claim_id: "c-nm-03"
+    claim_text: "Partial unique index uq_passages_article_chunk enforces uniqueness only across active passages."
+    claim_type: "measurement"
+    topics: ["pgvector", "rss", "mcp"]
+    semantic_tags: ["non-destructive versioning", "schema migration", "conditional HTTP polling"]
+
+  - passage_id: "p-da-01"
+    canonical_id: "pub:decoding-ai:production-rag"
+    publication: "decoding-ai"
+    author: "Paul Iusztin"
+    title: "Production RAG Architecture Patterns"
+    url: "https://www.decodingai.com/p/production-rag-architecture"
+    published_at: "2026-09-19T10:00:00Z"
+    text: >
+      Even when candidate chunks are gathered via hybrid search, a cross-encoder
+      reranking stage is critical to compress twenty noisy candidates into five
+      high-precision passages for the synthesis prompt.
+    claim_id: "c-da-01"
+    claim_text: "A cross-encoder reranker is essential in production RAG to filter candidate chunks."
+    claim_type: "opinion"
+    topics: ["reranker", "rag"]
+    semantic_tags: ["context precision", "second-stage scoring", "neural re-ranking"]
+
+  - passage_id: "p-da-02"
+    canonical_id: "pub:decoding-ai:reliable-agents"
+    publication: "decoding-ai"
+    author: "Paul Iusztin"
+    title: "Designing Reliable Agentic Workflows"
+    url: "https://www.decodingai.com/p/designing-reliable-agentic-workflows"
+    published_at: "2026-09-22T10:00:00Z"
+    text: >
+      When orchestrating multi-step research loops that synthesize conflicting
+      sources, frontier reasoning models remain substantially more dependable
+      than compact models on complex tool routing.
+    claim_id: "c-da-02"
+    claim_text: "Frontier models remain more reliable than small language models for multi-step agent planning."
+    claim_type: "opinion"
+    topics: ["small-language-model", "agent"]
+    semantic_tags: ["autonomous planning", "model routing", "reasoning reliability"]
+
+  - passage_id: "p-aa-01"
+    canonical_id: "pub:ahead-of-ai:slms-in-practice"
+    publication: "ahead-of-ai"
+    author: "Sebastian Raschka"
+    title: "Small Language Models in Practice"
+    url: "https://magazine.sebastianraschka.com/p/small-language-models-in-practice"
+    published_at: "2026-09-20T10:00:00Z"
+    text: >
+      Compact 7B parameter weights fine-tuned on domain schemas match giant
+      proprietary models on structured JSON extraction while slashing GPU memory
+      and token latency.
+    claim_id: "c-aa-01"
+    claim_text: "Small language models match frontier models on narrow schema-constrained extraction tasks."
+    claim_type: "opinion"
+    topics: ["small-language-model", "agent"]
+    semantic_tags: ["compact weights", "structured output efficiency", "fine-tuned specialized models"]
+
+  - passage_id: "p-aa-02"
+    canonical_id: "pub:ahead-of-ai:test-time-compute"
+    publication: "ahead-of-ai"
+    author: "Sebastian Raschka"
+    title: "Scaling Test-Time Compute in Reasoning Models"
+    url: "https://magazine.sebastianraschka.com/p/scaling-test-time-compute"
+    published_at: "2026-09-28T10:00:00Z"
+    text: >
+      Allocating extra inference budget to verifier-guided search during
+      generation will likely yield steeper accuracy improvements on math and
+      code than doubling pre-training parameter counts.
+    claim_id: "c-aa-02"
+    claim_text: "Test-time compute scaling will likely yield larger reasoning gains than doubling parameters."
+    claim_type: "prediction"
+    topics: ["test-time-compute", "llm"]
+    semantic_tags: ["inference-time scaling", "verifier search", "reasoning budget"]
+
+cases:
+  - case_id: "q-lexical-01"
+    category: "exact_identifier"
+    question: "Where are `create_function` and `uq_passages_article_chunk` defined and used?"
+    expected_passage_ids: ["p-nm-01", "p-nm-03"]
+    expected_topics: ["inngest", "pgvector"]
+    requires_cross_pub: false
+
+  - case_id: "q-lexical-02"
+    category: "exact_identifier"
+    question: "How do `inngest.Throttle` and `If-None-Match` protect upstream servers?"
+    expected_passage_ids: ["p-nm-02", "p-nm-03"]
+    expected_topics: ["inngest", "rss"]
+    requires_cross_pub: false
+
+  - case_id: "q-semantic-01"
+    category: "semantic_paraphrase"
+    question: "How does checkpointing prevent paying twice when a workflow crashes halfway?"
+    expected_passage_ids: ["p-nm-01"]
+    expected_topics: ["durable-execution", "inngest"]
+    requires_cross_pub: false
+
+  - case_id: "q-semantic-02"
+    category: "semantic_paraphrase"
+    question: "Can spending more inference budget at generation time beat training a bigger model?"
+    expected_passage_ids: ["p-aa-02"]
+    expected_topics: ["test-time-compute"]
+    requires_cross_pub: false
+
+  - case_id: "q-disagreement-01"
+    category: "cross_pub_disagreement"
+    question: "Do our publications agree on whether RAG needs a second-stage reranker?"
+    expected_passage_ids: ["p-nm-02", "p-da-01"]
+    expected_topics: ["reranker", "rag"]
+    requires_cross_pub: true
+
+  - case_id: "q-disagreement-02"
+    category: "cross_pub_disagreement"
+    question: "How do different authors compare small language models against frontier models for agents?"
+    expected_passage_ids: ["p-aa-01", "p-da-02"]
+    expected_topics: ["small-language-model", "agent"]
+    requires_cross_pub: true
+

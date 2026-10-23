@@ -75,6 +75,12 @@ mcp.add_tool(
         read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False
     ),
 )
+mcp.add_tool(
+    tools.kb_eval_report,
+    annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False
+    ),
+)
 
 
 

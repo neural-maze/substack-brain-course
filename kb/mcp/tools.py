@@ -20,6 +20,7 @@ from pydantic import Field
 from kb.config import settings
 from kb.db.queries import (
     get_job_status,
+    get_latest_eval_report,
     get_source_provenance,
     list_publications_with_stats,
 )
@@ -284,4 +285,25 @@ async def kb_sources(
             f"No claim or passage found for claim_or_passage_id={claim_or_passage_id!r}."
         )
     return provenance
+
+
+async def kb_eval_report(
+    limit: typing.Annotated[
+        int,
+        Field(
+            default=10,
+            ge=1,
+            le=50,
+            description="Max recent evaluated snapshots to include (1-50)",
+        ),
+    ] = 10,
+) -> dict[str, object]:
+    """Return the Week 5 evaluation report: failure taxonomy counts (`FM-1`..`FM-6`),
+    deterministic and binary LLM judge pass rates, recent snapshot critiques, and
+    the latest multi-variant retrieval benchmark (`sparse`, `dense`, `2-way RRF`,
+    `3-way RRF`).
+    """
+    async with get_session() as session:
+        return await get_latest_eval_report(session, limit=limit)
+
 

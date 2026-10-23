@@ -8,6 +8,7 @@ import inngest
 
 from kb.functions.backfill import backfill_publication
 from kb.functions.enrich import extract_claims
+from kb.functions.evals import evaluate_answer, run_eval_suite
 from kb.functions.freshness import poll_feeds
 from kb.functions.ingest import ingest_article
 from kb.functions.ops import handle_function_failed
@@ -18,5 +19,7 @@ FUNCTIONS: list[inngest.Function] = [
     extract_claims,
     poll_feeds,
     handle_function_failed,
+    evaluate_answer,
+    run_eval_suite,
 ]
 

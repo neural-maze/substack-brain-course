@@ -5,6 +5,8 @@ They cover the parts of week 2 that are pure logic or pure configuration:
     RRF fusion  ->  ingest-article's flow control  ->  allowlist & ids for 3 publications
 """
 
+import pytest
+
 from kb.config import Settings, settings
 from kb.functions.ingest import ingest_article
 from kb.retrieval.hybrid import compute_rrf
@@ -67,7 +69,11 @@ def test_runs_are_throttled_globally() -> None:
     assert throttle.key is None  # one OpenAI quota, shared by every publication
 
 
-def test_manual_runs_are_shifted_ahead_and_backfill_runs_behind() -> None:
+def test_manual_runs_are_shifted_ahead_and_backfill_runs_behind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PRIORITY_MANUAL_S", raising=False)
+    monkeypatch.delenv("PRIORITY_BACKFILL_S", raising=False)
     defaults = Settings(_env_file=None)  # type: ignore[call-arg]
     assert defaults.priority_manual_s == 600
     assert defaults.priority_backfill_s == -600

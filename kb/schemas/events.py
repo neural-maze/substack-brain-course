@@ -19,6 +19,8 @@ ARTICLE_INGESTED = "kb/article.ingested"
 ARTICLE_UPDATED = "kb/article.updated"
 CLAIMS_EXTRACTED = "kb/claims.extracted"
 ANSWER_PRODUCED = "kb/answer.produced"
+EVAL_RUN_REQUESTED = "kb/eval.run"
+ANSWER_EVALUATED = "kb/answer.evaluated"
 
 DiscoverySource = Literal["rss", "backfill", "manual", "poll"]
 
@@ -75,4 +77,23 @@ class AnswerProduced(BaseModel):
 
     snapshot_id: str
     retriever_variant: str
+
+
+class EvalRunRequested(BaseModel):
+    """POST /evals/run -> run-eval-suite. Triggers a multi-variant benchmark and failure replay."""
+
+    suite_name: str = "golden_v1"
+    include_failures_table: bool = True
+
+
+class AnswerEvaluated(BaseModel):
+    """evaluate-answer -> downstream telemetry. Summarizes the evaluation of a Snapshot."""
+
+    snapshot_id: str
+    composite_score: float
+    deterministic_passed: bool
+    faithfulness_verdict: str
+    disagreement_verdict: str
+    failure_codes: list[str]
+
 

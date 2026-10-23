@@ -72,6 +72,16 @@ class Settings(BaseSettings):
     anthropic_input_price_per_million_tokens: float = 3.00
     anthropic_output_price_per_million_tokens: float = 15.00
 
+    # --- Evaluation suite & binary LLM judges (week 5) ---
+    eval_judge_model: str = "claude-sonnet-5-5"
+    eval_judge_max_tokens: int = 1024
+    concurrency_eval_runs: int = 2
+    eval_taxonomy_file: str = "evals/taxonomy.yaml"
+    eval_labeled_traces_file: str = "evals/labeled_traces.jsonl"
+    eval_benchmark_file: str = "evals/golden_benchmark.yaml"
+    eval_min_tpr: float = 0.90
+    eval_min_tnr: float = 0.90
+
 
 settings = Settings()
 

@@ -24,6 +24,7 @@ def test_mcp_server_registers_all_eight_tools() -> None:
         "kb_list_publications",
         "kb_sync",
         "kb_sources",
+        "kb_eval_report",
     }
     assert set(tools_dict.keys()) == expected_names
 

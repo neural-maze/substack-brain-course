@@ -20,7 +20,12 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 from kb.config import settings
-from kb.db.queries import get_job_status, get_source_provenance, upsert_publication
+from kb.db.queries import (
+    get_job_status,
+    get_latest_eval_report,
+    get_source_provenance,
+    upsert_publication,
+)
 from kb.db.session import get_session
 from kb.functions import FUNCTIONS
 from kb.functions.ask import ask_question
@@ -29,8 +34,10 @@ from kb.inngest_client import client
 from kb.retrieval import dense, hybrid, sparse
 from kb.schemas.events import (
     ARTICLE_DISCOVERED,
+    EVAL_RUN_REQUESTED,
     PUBLICATION_ADDED,
     ArticleDiscovered,
+    EvalRunRequested,
     PublicationAdded,
 )
 from kb.schemas.ids import canonical_id
@@ -216,4 +223,35 @@ async def get_source(claim_or_passage_id: str) -> dict[str, Any]:
             detail=f"No claim or passage found for id={claim_or_passage_id!r}.",
         )
     return provenance
+
+
+@app.post("/evals/run")
+async def trigger_eval_suite(payload: EvalRunRequested | None = None) -> dict[str, Any]:
+    """Trigger the Week 5 multi-variant evaluation suite (`run-eval-suite`) via Inngest.
+
+    Slow work: dispatches `kb/eval.run` and returns an `{event_id, trace_url, status}`
+    handle in <50ms. Poll `GET /jobs/{event_id}` or `GET /evals/latest` for results.
+    """
+    req = payload or EvalRunRequested()
+    event = inngest.Event(name=EVAL_RUN_REQUESTED, data=req.model_dump(mode="json"))
+    event_ids = await client.send(event)
+    event_id = event_ids[0]
+    return {
+        "event_id": event_id,
+        "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
+        "suite_name": req.suite_name,
+        "status": "queued",
+    }
+
+
+@app.get("/evals/latest")
+async def get_eval_report(
+    limit: int = Query(default=10, ge=1, le=50),
+) -> dict[str, Any]:
+    """Fast read (<1s): return the latest evaluation report, failure taxonomy counts,
+    recent snapshot critiques, and multi-variant experiment summary.
+    """
+    async with get_session() as session:
+        return await get_latest_eval_report(session, limit=limit)
+
 

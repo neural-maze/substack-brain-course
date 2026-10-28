@@ -1,0 +1,235 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 510" width="100%" height="100%">
+  <defs>
+    <style>
+      .title-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 20px;
+        fill: #2C3560;
+      }
+      .node-heading {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 14.5px;
+        fill: #2C3560;
+      }
+      .prop-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 600;
+        font-size: 12px;
+        fill: #2C3560;
+      }
+      .sub-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 600;
+        font-size: 11.5px;
+        fill: #52587A;
+      }
+      .badge-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 11.5px;
+        fill: #2C3560;
+      }
+      .edge-label {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 12px;
+        fill: #2C3560;
+      }
+    </style>
+
+    <!-- Solid dark navy arrowhead matching week_4_ontology.svg -->
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#2C3560" />
+    </marker>
+
+    <!-- Dotted feedback loop arrowhead -->
+    <marker id="arrow-dotted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#4A3F28" />
+    </marker>
+  </defs>
+
+  <!-- White Canvas Background -->
+  <rect width="1280" height="510" rx="18" fill="#FFFFFF" />
+
+  <!-- Top Header Banner (Slate/Lavender-Grey style from week_4_ontology.svg) -->
+  <rect x="32" y="22" width="1216" height="64" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+
+  <!-- Checklist / Loop Icon in Header -->
+  <g transform="translate(54, 38)" fill="none" stroke="#2C3560" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="26" height="28" rx="5" fill="#FFFFFF" />
+    <path d="M 8 11 L 11 14 L 16 9" />
+    <line x1="19" y1="12" x2="23" y2="12" />
+    <path d="M 8 21 L 11 24 L 16 19" />
+    <line x1="19" y1="22" x2="23" y2="22" />
+  </g>
+  <text x="98" y="61" class="title-text">Error Analysis &amp; Durable Eval Loop</text>
+
+  <!-- Header Summary Pills -->
+  <rect x="498" y="38" width="210" height="32" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2" />
+  <text x="603" y="59" text-anchor="middle" class="prop-text">Open -&gt; Axial Coding</text>
+
+  <rect x="724" y="38" width="244" height="32" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+  <text x="846" y="59" text-anchor="middle" class="badge-text">Code First · Binary PASS/FAIL</text>
+
+  <rect x="984" y="38" width="242" height="32" rx="8" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+  <text x="1105" y="59" text-anchor="middle" class="badge-text">TPR &gt;= 0.90 · TNR &gt;= 0.90</text>
+
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 1: Collect Real Traces (Sky Blue Palette)                       -->
+  <!-- ===================================================================== -->
+  <g transform="translate(32, 118)">
+    <rect x="0" y="0" width="212" height="268" rx="16" fill="#DFF4FF" stroke="#59ADD9" stroke-width="2" />
+
+    <!-- Header Pill -->
+    <rect x="14" y="16" width="184" height="44" rx="10" fill="#FFFFFF" stroke="#59ADD9" stroke-width="2" />
+    <rect x="22" y="26" width="26" height="24" rx="6" fill="#A6EAFE" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="35" y="42" text-anchor="middle" class="badge-text">01</text>
+    <text x="56" y="43" class="node-heading">Collect Traces</text>
+
+    <!-- Inner Rows -->
+    <rect x="14" y="76" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.8" />
+    <text x="26" y="97" class="prop-text">snapshots</text>
+    <text x="26" y="115" class="sub-text">all retrieved + cited</text>
+
+    <rect x="14" y="138" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.8" />
+    <text x="26" y="159" class="prop-text">failures</text>
+    <text x="26" y="177" class="sub-text">inngest/function.failed</text>
+
+    <rect x="14" y="202" width="184" height="48" rx="8" fill="#A6EAFE" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="106" y="223" text-anchor="middle" class="badge-text">kb/answer.produced</text>
+    <text x="106" y="240" text-anchor="middle" class="sub-text">real production traffic</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 2: Open Coding (Soft Purple Palette)                            -->
+  <!-- ===================================================================== -->
+  <g transform="translate(283, 118)">
+    <rect x="0" y="0" width="212" height="268" rx="16" fill="#ECDDFF" stroke="#8A4EC0" stroke-width="2" />
+
+    <!-- Header Pill -->
+    <rect x="14" y="16" width="184" height="44" rx="10" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="2" />
+    <rect x="22" y="26" width="26" height="24" rx="6" fill="#E3C3FD" stroke="#8A4EC0" stroke-width="1.5" />
+    <text x="35" y="42" text-anchor="middle" class="badge-text">02</text>
+    <text x="56" y="43" class="node-heading">Open Coding</text>
+
+    <!-- Inner Rows -->
+    <rect x="14" y="76" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.8" />
+    <text x="26" y="97" class="prop-text">30–50 real traces</text>
+    <text x="26" y="115" class="sub-text">human domain review</text>
+
+    <rect x="14" y="138" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.8" />
+    <text x="26" y="159" class="prop-text">open_code_note</text>
+    <text x="26" y="177" class="sub-text">note 1st failure seen</text>
+
+    <rect x="14" y="202" width="184" height="48" rx="8" fill="#E3C3FD" stroke="#8A4EC0" stroke-width="1.5" />
+    <text x="106" y="223" text-anchor="middle" class="badge-text">No LLM guessing</text>
+    <text x="106" y="240" text-anchor="middle" class="sub-text">grounded observations</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 3: Axial Coding (Slate + Warm Amber Palette)                    -->
+  <!-- ===================================================================== -->
+  <g transform="translate(534, 118)">
+    <rect x="0" y="0" width="212" height="268" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+
+    <!-- Header Pill -->
+    <rect x="14" y="16" width="184" height="44" rx="10" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2.2" />
+    <rect x="22" y="26" width="26" height="24" rx="6" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.5" />
+    <text x="35" y="42" text-anchor="middle" class="badge-text">03</text>
+    <text x="56" y="43" class="node-heading">Axial Coding</text>
+
+    <!-- Inner Rows -->
+    <rect x="14" y="76" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="26" y="97" class="prop-text">FM-1 .. FM-3</text>
+    <text x="26" y="115" class="sub-text">bounds · stale · abstain</text>
+
+    <rect x="14" y="138" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="26" y="159" class="prop-text">FM-4 .. FM-6</text>
+    <text x="26" y="177" class="sub-text">faithful · conflict · recall</text>
+
+    <rect x="14" y="202" width="184" height="48" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.5" />
+    <text x="106" y="223" text-anchor="middle" class="badge-text">taxonomy.yaml</text>
+    <text x="106" y="240" text-anchor="middle" class="sub-text">6 axial failure modes</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 4: Code First, Judges Second (Mint Green Palette)               -->
+  <!-- ===================================================================== -->
+  <g transform="translate(785, 118)">
+    <rect x="0" y="0" width="212" height="268" rx="16" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+
+    <!-- Header Pill -->
+    <rect x="14" y="16" width="184" height="44" rx="10" fill="#FFFFFF" stroke="#43C37E" stroke-width="2.2" />
+    <rect x="22" y="26" width="26" height="24" rx="6" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="35" y="42" text-anchor="middle" class="badge-text">04</text>
+    <text x="56" y="43" class="node-heading">Evaluators</text>
+
+    <!-- Inner Rows -->
+    <rect x="14" y="76" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="26" y="97" class="prop-text">L1: Python Code</text>
+    <text x="26" y="115" class="sub-text">0 USD · &lt;1ms checks</text>
+
+    <rect x="14" y="138" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="26" y="159" class="prop-text">L2: Binary Judges</text>
+    <text x="26" y="177" class="sub-text">critique -&gt; PASS | FAIL</text>
+
+    <rect x="14" y="202" width="184" height="48" rx="8" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="106" y="223" text-anchor="middle" class="badge-text">ctx.step.run(...)</text>
+    <text x="106" y="240" text-anchor="middle" class="sub-text">memoized Inngest steps</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- STAGE 5: Calibrate the Judge (Soft Rose/Magenta Palette)              -->
+  <!-- ===================================================================== -->
+  <g transform="translate(1036, 118)">
+    <rect x="0" y="0" width="212" height="268" rx="16" fill="#FCE7F3" stroke="#D9468F" stroke-width="2" />
+
+    <!-- Header Pill -->
+    <rect x="14" y="16" width="184" height="44" rx="10" fill="#FFFFFF" stroke="#D9468F" stroke-width="2.2" />
+    <rect x="22" y="26" width="26" height="24" rx="6" fill="#FBCFE8" stroke="#D9468F" stroke-width="1.5" />
+    <text x="35" y="42" text-anchor="middle" class="badge-text">05</text>
+    <text x="56" y="43" class="node-heading">Calibrate</text>
+
+    <!-- Inner Rows -->
+    <rect x="14" y="76" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.8" />
+    <text x="26" y="97" class="prop-text">TPR &gt;= 0.90</text>
+    <text x="26" y="115" class="sub-text">catches real failures</text>
+
+    <rect x="14" y="138" width="184" height="50" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.8" />
+    <text x="26" y="159" class="prop-text">TNR &gt;= 0.90</text>
+    <text x="26" y="177" class="sub-text">clears clean passes</text>
+
+    <rect x="14" y="202" width="184" height="48" rx="8" fill="#FBCFE8" stroke="#D9468F" stroke-width="1.5" />
+    <text x="106" y="223" text-anchor="middle" class="badge-text">snapshots.confidence</text>
+    <text x="106" y="240" text-anchor="middle" class="sub-text">+ 4-way RRF experiments</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- FORWARD ARROWS BETWEEN STAGES 1 -> 2 -> 3 -> 4 -> 5                   -->
+  <!-- ===================================================================== -->
+  <line x1="244" y1="252" x2="279" y2="252" stroke="#2C3560" stroke-width="2.4" marker-end="url(#arrow-navy)" />
+  <line x1="495" y1="252" x2="530" y2="252" stroke="#2C3560" stroke-width="2.4" marker-end="url(#arrow-navy)" />
+  <line x1="746" y1="252" x2="781" y2="252" stroke="#2C3560" stroke-width="2.4" marker-end="url(#arrow-navy)" />
+  <line x1="997" y1="252" x2="1032" y2="252" stroke="#2C3560" stroke-width="2.4" marker-end="url(#arrow-navy)" />
+
+
+  <!-- ===================================================================== -->
+  <!-- CONTINUOUS FEEDBACK LOOP: STAGE 5 -> STAGE 1                          -->
+  <!-- ===================================================================== -->
+  <path d="M 1142 386 L 1142 436 Q 1142 452 1126 452 L 154 452 Q 138 452 138 436 L 138 392"
+        fill="none" stroke="#4A3F28" stroke-width="2.2" stroke-dasharray="5,5" marker-end="url(#arrow-dotted)" />
+
+  <!-- Feedback Loop Pill -->
+  <rect x="400" y="432" width="480" height="38" rx="10" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+  <text x="640" y="456" text-anchor="middle" class="edge-label">Continuous Loop: evaluate-answer &amp; run-eval-suite -&gt; snapshots &amp; eval_runs</text>
+
+</svg>
+

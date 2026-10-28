@@ -2,7 +2,7 @@
 
 **Course framing:** *Stop grading your AI system on generic "helpfulness" vibes. Use Hamel Husain's bottom-up error analysis (Open Coding $\rightarrow$ Axial Coding) on your own `snapshots` and `failures` tables to discover how your pipeline actually breaks, prioritize deterministic Python guardrails before LLM judges, calibrate binary Pass/Fail judges with TPR and TNR against human labels, and run everything as a durable, event-driven Inngest evaluation suite.*
 
-This guide builds directly on Weeks 1–4. Every piece of evaluation scaffolding we planted earlier—the `snapshots` table and `kb/answer.produced` event from Week 2, the `failures` collector (`handle-function-failed`) from Week 3, and the `quote_span` guardrail and `claims` lineage from Week 4—converges here.
+This guide builds directly on Weeks 1–4. Whether you are continuing from an existing Week 4 database or **starting the project from zero** (`cp .env.example .env` $\rightarrow$ `make start` $\rightarrow$ backfill in [Step 1](#step-1--start-the-stack--backfill-data-from-zero)), every command below is 100% self-contained and runs against this repo state. Every piece of evaluation scaffolding we planted earlier—the `snapshots` table and `kb/answer.produced` event from Week 2, the `failures` collector (`handle-function-failed`) from Week 3, and the `quote_span` guardrail and `claims` lineage from Week 4—converges here.
 
 The main [README.md](../README.md) has the high-level course overview. This file is the full architectural research and implementation walkthrough for Week 5.
 
@@ -27,23 +27,9 @@ By the end of this week, you will have:
   - `run-eval-suite`: Triggered by `kb/eval.run` to replay historical failures (`failures` table) and benchmark retrieval variants (`sparse`, `dense`, `hybrid_2way_rrf_k60`, `hybrid_3way_rrf_k60`) with Recall@k, MRR, and judge pass rates.
 - **MCP & HTTP Inspection (`GET /evals`, `POST /evals/run`, `kb_eval_report`)**: The 10th MCP tool so coding agents can inspect failure rates and variant comparisons directly.
 
-```
-POST /ask & kb_ask ──▶ saves Snapshot (confidence=NULL) ──▶ emits kb/answer.produced (fire-and-forget)
-                                                                       │
-                                                                       ▼
-                                                            evaluate-answer (Inngest)
-                                                             ├─ 1. load-snapshot (Postgres)
-                                                             ├─ 2. score-deterministic (0 USD, <1ms Python checks)
-                                                             ├─ 3. judge-faithfulness (Claude binary PASS/FAIL + critique)
-                                                             ├─ 4. judge-disagreement (Claude binary PASS/FAIL + critique)
-                                                             └─ 5. persist-eval-scores (writes eval_results + snapshots.confidence)
-
-failures table (Week 3) ──┐
-labeled_traces.jsonl    ──┴──▶ kb/eval.run ──▶ run-eval-suite (Inngest experiment runner)
-                                                ├─ replays variants (sparse | dense | 2-way RRF | 3-way RRF)
-                                                ├─ computes Recall@5, MRR, & binary pass rates per variant
-                                                └─ records durable experiment summary in eval_runs
-```
+<p align="center">
+    <a href="../static/week_5_inngest_evals.svg"><img src="../static/week_5_inngest_evals.svg" alt="The Week 5 Inngest Durable Evaluation Suite: evaluate-answer and run-eval-suite" width="750"></a>
+</p>
 
 ---
 
@@ -53,16 +39,11 @@ labeled_traces.jsonl    ──┴──▶ kb/eval.run ──▶ run-eval-suite 
 
 In his research and writing on production LLM evaluations, **Hamel Husain** (alongside Shreya Shankar) identifies the #1 anti-pattern in AI engineering: **jumping straight to automated LLM-as-a-judge metrics before looking at your data.**
 
-Instead, effective evaluation follows a strict four-stage loop:
+Instead, effective evaluation follows a strict five-stage loop:
 
-```mermaid
-flowchart LR
-    A["1. Collect Real Traces\n(snapshots + failures)"] --> B["2. Open Coding\n(30–50 human notes:\nfirst failure per trace)"]
-    B --> C["3. Axial Coding\n(Cluster notes into a\nFailure Taxonomy)"]
-    C --> D["4. Build Evaluators\n(Code assertions first,\nBinary Judges second)"]
-    D --> E["5. Calibrate Judges\n(Measure TPR & TNR ≥ 0.90\nvs. human labels)"]
-    E --> A
-```
+<p align="center">
+    <a href="../static/week_5_error_analysis.svg"><img src="../static/week_5_error_analysis.svg" alt="The Week 5 Error Analysis and Durable Evaluation Loop" width="750"></a>
+</p>
 
 1. **Look at your data (Open Coding)**: Before writing a single evaluator prompt, a domain expert inspects 30–50 real system traces (`snapshots` and `failures` in our Postgres DB) and writes raw, unstructured observations describing the *first* thing that went wrong in each trace (e.g., *"Cited [2] and [4], but passage [4] was never mentioned in the answer text"*, or *"Decoding AI and Ahead of AI gave opposite advice on rerankers, and the synthesizer only mentioned one"*).
 2. **Group into a Failure Taxonomy (Axial Coding)**: Cluster those raw notes into 4–6 concrete, mutually clear failure categories. Count their frequencies so you build evaluators for bugs that actually happen, not hypothetical ones.
@@ -92,7 +73,75 @@ By wiring our evaluation suite into **Inngest** (using the Python SDK's durable 
 
 ---
 
-## Step 1 — Open & Axial Coding: Inspecting our real `snapshots` and `failures`
+## Step 1 — Start the stack & backfill data from zero
+
+Whether you are continuing from Week 4 or cloning the repo from scratch, follow these three sub-steps to bring the stack up and populate initial data.
+
+### 1. Configure `.env` and install dependencies
+
+If you are starting from a fresh checkout:
+
+```bash
+cp .env.example .env
+uv sync --all-extras
+```
+
+Open `.env` and fill in `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`.
+
+> **Tip for fast local backfills:** In `.env`, set `PRIORITY_BACKFILL_S=0` so `backfill-publication` runs start immediately instead of waiting behind the 10-minute (`-600s`) priority window used in Week 2's queue-jump demo.
+
+### 2. Start the full stack (`make start`)
+
+Run:
+
+```bash
+make start
+```
+
+`make start` brings up all containers (`postgres`, `memgraph`, `memgraph-lab`, `inngest-dev`, `adminer`), waits for Postgres and Memgraph health checks, runs `uv run python -m alembic upgrade head` (applying all migrations through Week 5's `a7c9d1e2f3b4_week_5_eval_tables.py` for `eval_results` and `eval_runs`), and starts the FastAPI + Inngest app on `http://localhost:8000`.
+
+In a second terminal, verify all three subsystems are healthy:
+
+```bash
+curl http://localhost:8000/health
+```
+
+You should see `"database": "ok"`, `"inngest": "ok"`, and `"memgraph": "ok"`.
+
+### 3. Backfill the three newsletters (so you have articles, claims, and snapshots)
+
+If you are starting with an empty database, trigger ingestion and claim extraction across the three Substack publications:
+
+```bash
+curl -X POST http://localhost:8000/publications -H "Content-Type: application/json" \
+  -d '{"feed_url": "https://theneuralmaze.com/feed"}'
+
+curl -X POST http://localhost:8000/publications -H "Content-Type: application/json" \
+  -d '{"feed_url": "https://www.decodingai.com/feed"}'
+
+curl -X POST http://localhost:8000/publications -H "Content-Type: application/json" \
+  -d '{"feed_url": "https://magazine.sebastianraschka.com/feed"}'
+```
+
+*(Want just one article ingested immediately without waiting for full RSS feeds? Use the high-priority manual endpoint instead:)*
+
+```bash
+curl -X POST http://localhost:8000/articles -H "Content-Type: application/json" \
+  -d '{"url": "https://theneuralmaze.substack.com/p/durable-harnesses-for-graph-powered"}'
+```
+
+Then ask a question so your `snapshots` table has live rows ready to inspect:
+
+```bash
+curl -X POST http://localhost:8000/ask -H "Content-Type: application/json" \
+  -d '{"question": "How do durable execution engines handle failure recovery and step memoization?"}'
+```
+
+> **Note:** Even before backfilling live RSS feeds, the offline judge calibration (`Step 6`) and the 4-way retrieval benchmark (`Step 8`) work out of the box because `evals/labeled_traces.jsonl` and `evals/golden_benchmark.yaml` ship with self-contained fixture passages and claims.
+
+---
+
+## Step 2 — Open & Axial Coding: Inspecting our real `snapshots` and `failures`
 
 Before writing any Week 5 code, we query the two tables our system has been populating since Week 2 and Week 3.
 
@@ -102,21 +151,14 @@ With the stack running (`make start`), inspect your accumulated answer snapshots
 
 ```bash
 # 1. Inspect answer snapshots where retrieval was thin or citations were sparse
-docker compose -f infra/docker-compose.yml exec postgres \
-  psql -U substack_brain -d substack_brain -c \
-  "SELECT snapshot_id, retriever_variant, latency_ms,
-          jsonb_array_length(retrieved) AS retrieved_count,
-          jsonb_array_length(citations) AS cited_count,
-          LEFT(question, 60) AS question
-   FROM snapshots
-   ORDER BY created_at DESC LIMIT 20;"
+docker compose -f infra/docker-compose.yml exec -T postgres \
+  psql -U substack_brain -d substack_brain -P pager=off -x -c \
+  "SELECT snapshot_id, retriever_variant, latency_ms, jsonb_array_length(retrieved) AS retrieved_count, jsonb_array_length(citations) AS cited_count, LEFT(question, 60) AS question FROM snapshots ORDER BY created_at DESC LIMIT 20;"
 
 # 2. Inspect operational failures captured by handle-function-failed
-docker compose -f infra/docker-compose.yml exec postgres \
-  psql -U substack_brain -d substack_brain -c \
-  "SELECT id, function_id, LEFT(error, 80) AS error, created_at
-   FROM failures
-   ORDER BY created_at DESC LIMIT 20;"
+docker compose -f infra/docker-compose.yml exec -T postgres \
+  psql -U substack_brain -d substack_brain -P pager=off -x -c \
+  "SELECT id, function_id, LEFT(error, 80) AS error, created_at FROM failures ORDER BY created_at DESC LIMIT 20;"
 ```
 
 ### 2. What Open Coding revealed on The Substack Brain
@@ -124,6 +166,10 @@ docker compose -f infra/docker-compose.yml exec postgres \
 When we open-coded 40 real traces across The Neural Maze, Decoding AI, and Ahead of AI, every observed defect fell into one of two buckets: **retrieval/pipeline failures** (the right context never reached the synthesizer) or **synthesis/generation failures** (the context was present in `snapshots.retrieved`, but Claude mishandled it).
 
 Grouping those open-coding notes via **Axial Coding** produced our **6-category Failure Taxonomy**:
+
+<p align="center">
+    <a href="../static/week_5_taxonomy.svg"><img src="../static/week_5_taxonomy.svg" alt="The Week 5 Axial Failure Taxonomy: FM-1 through FM-6" width="750"></a>
+</p>
 
 | Failure Code | Layer | What Went Wrong (Axial Category) | Evaluator Type | Why? |
 | :--- | :--- | :--- | :--- | :--- |
@@ -146,7 +192,7 @@ Instead, Week 5 separates evaluation into two self-contained, deterministic fixt
 
 ---
 
-## Step 2 — Database schema & migrations for Week 5
+## Step 3 — Database schema & migrations for Week 5
 
 Week 5 activates the `snapshots.confidence` column we reserved in Week 2 (`Numeric(5, 4)`) and adds two tables in a new Alembic migration (`alembic/versions/a7c9d1e2f3b4_week_5_eval_tables.py`), maintaining our **"one writer per table"** rule:
 
@@ -172,7 +218,7 @@ Week 5 activates the `snapshots.confidence` column we reserved in Week 2 (`Numer
 
 ---
 
-## Step 3 — Level 1: Deterministic Code Evaluators (`kb/evals/deterministic.py`)
+## Step 4 — Level 1: Deterministic Code Evaluators (`kb/evals/deterministic.py`)
 
 Following Hamel Husain's hierarchy, **deterministic evaluators run first, in pure Python, with zero API calls**.
 
@@ -198,7 +244,7 @@ If any deterministic check fails, `deterministic_passed` is `False`, the exact `
 
 ---
 
-## Step 4 — Level 2: Narrow Binary LLM Judges (`kb/evals/judges.py`)
+## Step 5 — Level 2: Narrow Binary LLM Judges (`kb/evals/judges.py`)
 
 For `FM-4` (Faithfulness & Epistemic Attribution) and `FM-5` (Cross-Publication Disagreement Coverage), regex cannot tell whether a sentence faithfully represents the cited passage. Here we use our hand-written agent layer (`kb/agents/core.py:Agent` and `run_agent`) with a strict Pydantic schema:
 
@@ -237,7 +283,7 @@ When you ask a single LLM prompt to evaluate faithfulness, tone, completeness, f
 
 ---
 
-## Step 5 — Calibrating the Judges: Measuring TPR & TNR (`scripts/calibrate_judges.py`)
+## Step 6 — Calibrating the Judges: Measuring TPR & TNR (`scripts/calibrate_judges.py`)
 
 How do we know `faithfulness_judge_agent` and `disagreement_judge_agent` actually agree with human engineering judgment?
 
@@ -252,6 +298,12 @@ uv run python scripts/calibrate_judges.py --mode offline
 # Run live against Anthropic to measure your LLM judge's real TPR and TNR
 uv run python scripts/calibrate_judges.py --mode live
 ```
+
+**What happens after running this:**
+1. The script loads all 20 frozen traces from `evals/labeled_traces.jsonl` (10 human `PASS` traces and 10 human `FAIL` traces covering `FM-1` through `FM-5`).
+2. For each trace, it runs `run_deterministic_checks` first (`FM-1` citation bounds/subset, `FM-2` `valid_to IS NULL`, `FM-3` abstain/citation discipline), then executes `faithfulness_judge_agent` (`FM-4`) and—whenever the retrieved context spans $\ge 2$ authors/publications—`disagreement_judge_agent` (`FM-5`).
+3. It compares each predicted verdict against the human gold verdict (`PASS` vs. `FAIL`), builds the confusion matrix (`TP`, `FP`, `TN`, `FN`), and prints **$\text{TPR}$ (Sensitivity on Failures)** and **$\text{TNR}$ (Specificity on Passes)** for each evaluator tier plus the combined pipeline.
+4. If any judge disagrees with a human label, it prints the judge's `critique` next to the human's `open_code_note` and exits with code `1` if $\text{TPR} < 0.90$ or $\text{TNR} < 0.90$ (or `0` when aligned).
 
 ### How TPR and TNR are computed for failure detection
 
@@ -268,7 +320,7 @@ Why both numbers matter:
 
 ---
 
-## Step 6 — Durable Online Evaluation with Inngest (`evaluate-answer`)
+## Step 7 — Durable Online Evaluation with Inngest (`evaluate-answer`)
 
 Remember how `POST /ask` (`kb/functions/ask.py`) ends in Week 2:
 
@@ -308,29 +360,30 @@ When a user or MCP agent calls `POST /ask` or `kb_ask`, they get their answer im
 
 ### Try it yourself: Watch `snapshots.confidence` populate automatically
 
-1. Ask a question via HTTP or MCP:
+1. **Ask a question via HTTP or MCP:**
    ```bash
    curl -X POST http://localhost:8000/ask \
      -H "Content-Type: application/json" \
      -d '{"question": "How do durable execution engines handle failure recovery compared to traditional queues?"}'
    ```
-2. Open the Inngest Dev Server at `http://localhost:8288`:
-   You'll see the `kb/answer.produced` event trigger `evaluate-answer` and execute its 5 durable steps.
-3. Inspect the scored snapshot in Postgres:
+   **What happens after running this:**
+   - **Synchronous read path (`<2s`)**: FastAPI runs 3-way hybrid retrieval (`BM25 + pgvector + Memgraph`), synthesizes the grounded answer with `[k]` citations, commits a new row to `snapshots` with `confidence = NULL`, and returns the answer to you immediately.
+   - **Fire-and-forget event dispatch**: Right after committing the snapshot, `POST /ask` emits `kb/answer.produced` (`{snapshot_id, retriever_variant}`) to Inngest without blocking the HTTP response.
+   - **Durable background evaluation (`evaluate-answer` at `http://localhost:8288`)**: Inngest catches `kb/answer.produced` and executes all 5 memoized steps (`load-snapshot` $\rightarrow$ `score-deterministic` $\rightarrow$ `judge-faithfulness` $\rightarrow$ `judge-disagreement` $\rightarrow$ `persist-eval-scores`), writing the audit row to `eval_results` and updating `snapshots.confidence` from `NULL` to `1.0000`, `0.5000`, or `0.0000`.
+
+2. **Inspect the scored snapshot and judge critiques in Postgres:**
    ```bash
-   docker compose -f infra/docker-compose.yml exec postgres \
-     psql -U substack_brain -d substack_brain -c \
-     "SELECT s.snapshot_id, s.confidence, e.deterministic_passed,
-             e.faithfulness_verdict, e.disagreement_verdict, e.failure_codes,
-             LEFT(e.faithfulness_critique, 80) AS critique
-      FROM snapshots s
-      JOIN eval_results e ON e.snapshot_id = s.snapshot_id
-      ORDER BY s.created_at DESC LIMIT 5;"
+   docker compose -f infra/docker-compose.yml exec -T postgres \
+     psql -U substack_brain -d substack_brain -P pager=off -x -c \
+     "SELECT s.snapshot_id, s.confidence, e.deterministic_passed, e.faithfulness_verdict, e.disagreement_verdict, e.failure_codes, LEFT(e.faithfulness_critique, 120) AS critique FROM snapshots s JOIN eval_results e ON e.snapshot_id = s.snapshot_id ORDER BY s.created_at DESC LIMIT 5;"
    ```
+   **What happens after running this:**
+   - Postgres joins `snapshots` with `eval_results` for your 5 newest answers.
+   - You see `s.confidence` populated (`1.0000`, `0.5000`, or `0.0000`), the boolean result of the Level 1 Python guardrails (`deterministic_passed`), both binary verdicts (`PASS`, `FAIL`, or `NOT_APPLICABLE`), any triggered taxonomy codes (`failure_codes`, e.g., `["FM-4"]`), and the judge's step-by-step `faithfulness_critique`.
 
 ---
 
-## Step 7 — Running Variant Experiments & Failure Replays (`run-eval-suite`)
+## Step 8 — Running Variant Experiments & Failure Replays (`run-eval-suite`)
 
 Evaluating single live answers isn't enough when you want to change a system parameter—like switching from Week 2's 2-way RRF (`BM25 + pgvector`) to Week 4's 3-way RRF (`BM25 + pgvector + Memgraph`). You need an **experiment runner** that evaluates variants head-to-head on a benchmark dataset and on your captured `failures` table.
 
@@ -359,7 +412,13 @@ curl -X POST http://localhost:8000/evals/run \
   -d '{"suite_name": "golden_v1", "include_failures_table": true}'
 ```
 
- This returns an `{event_id, trace_url, status: "queued"}` handle in under 50ms (honoring Week 3's Asymmetry Principle: running a multi-variant benchmark is slow work and goes through Inngest; reading the latest eval report is a fast read and hits Postgres directly).
+**What happens after running this:**
+1. **Non-blocking dispatch (`<50ms`)**: FastAPI emits `kb/eval.run` to Inngest and returns `{event_id, trace_url, status: "queued"}` immediately (honoring Week 3's Asymmetry Principle).
+2. **Durable benchmark execution (`run-eval-suite` in Inngest at `http://localhost:8288`)**: Inngest runs 7 independent, retryable steps:
+   - `1. load-eval-cases`: Loads the benchmark queries and fixture corpus from `evals/golden_benchmark.yaml` plus recent rows from Week 3's `failures` table.
+   - `2..5. evaluate-variant-{sparse_bm25 | dense_pgvector | hybrid_2way_rrf_k60 | hybrid_3way_rrf_k60}`: Evaluates each retrieval strategy on the same query cohort and computes `recall_at_5`, `mrr`, `cross_pub_coverage`, `deterministic_pass_rate`, and `faithfulness_pass_rate`.
+   - `6. verify-failure-replays`: Audits the `failures` table rows and groups operational failures by function (`ingest-article`, `extract-claims`, etc.).
+   - `7. persist-suite-summary`: Writes the completed multi-variant comparison and case-level breakdown into `eval_runs`.
 
 Fetch the completed evaluation report:
 
@@ -367,7 +426,8 @@ Fetch the completed evaluation report:
 curl http://localhost:8000/evals/latest
 ```
 
-Example output comparing the 4 retrieval variants across the golden benchmark:
+**What happens after running this:**
+1. FastAPI queries `eval_results`, `snapshots`, and `eval_runs` directly in Postgres (`<20ms`, no queue hop) and returns the unified JSON report containing aggregate pass rates (`totals`), failure mode counts (`failure_taxonomy_counts`), the lowest-confidence recent snapshots with judge critiques (`lowest_confidence_snapshots`), and the latest multi-variant benchmark summary (`latest_suite_run`):
 
 ```json
 {
@@ -408,7 +468,7 @@ Notice what the variant experiment proves empirically:
 
 ---
 
-## Step 8 — The 10th MCP Tool (`kb_eval_report`)
+## Step 9 — The 10th MCP Tool (`kb_eval_report`)
 
 To expose our evaluation suite to Claude Code and Cursor, Week 5 adds `kb_eval_report` to `kb/mcp/tools.py`:
 
@@ -421,7 +481,7 @@ Ask your agent in Claude Code or Cursor:
 
 ---
 
-## Step 9 — Run the Week 5 tests
+## Step 10 — Run the Week 5 tests
 
 Unit tests verify the deterministic checks (`FM-1`–`FM-3`), binary judge schema validation, TPR/TNR calibration math, retrieval metric calculations (Recall@k, MRR), and Inngest function registration—with zero Docker containers or API keys required:
 

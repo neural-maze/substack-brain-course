@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 570" width="100%" height="100%">
+  <defs>
+    <style>
+      .title-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 20px;
+        fill: #2C3560;
+      }
+      .node-heading {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 15px;
+        fill: #2C3560;
+      }
+      .prop-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 600;
+        font-size: 12px;
+        fill: #2C3560;
+      }
+      .sub-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 600;
+        font-size: 11.5px;
+        fill: #52587A;
+      }
+      .badge-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 11.5px;
+        fill: #2C3560;
+      }
+      .edge-label {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+        font-weight: 700;
+        font-size: 12px;
+        fill: #2C3560;
+      }
+    </style>
+
+    <!-- Solid dark navy arrowhead -->
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#2C3560" />
+    </marker>
+
+    <!-- Dotted event arrowhead -->
+    <marker id="arrow-dotted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 9 5 L 1 8.5 z" fill="#4A3F28" />
+    </marker>
+  </defs>
+
+  <!-- White Canvas Background -->
+  <rect width="1280" height="570" rx="18" fill="#FFFFFF" />
+
+  <!-- Top Header Banner -->
+  <rect x="32" y="22" width="1216" height="64" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+
+  <!-- Workflow / Step Icon in Header -->
+  <g transform="translate(54, 38)" fill="none" stroke="#2C3560" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="8" cy="14" r="5" fill="#FFFFFF" />
+    <circle cx="24" cy="7" r="5" fill="#FFFFFF" />
+    <circle cx="24" cy="21" r="5" fill="#FFFFFF" />
+    <line x1="13" y1="12" x2="19" y2="9" />
+    <line x1="13" y1="16" x2="19" y2="19" />
+  </g>
+  <text x="98" y="61" class="title-text">Inngest Durable Evaluation Suite (kb/functions/evals.py)</text>
+
+  <!-- Header Summary Pills -->
+  <rect x="678" y="38" width="268" height="32" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+  <text x="812" y="59" text-anchor="middle" class="badge-text">Deferred Scoring · 0ms User Lag</text>
+
+  <rect x="962" y="38" width="264" height="32" rx="8" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+  <text x="1094" y="59" text-anchor="middle" class="badge-text">Memoized Steps · Cost Tracked</text>
+
+
+  <!-- ===================================================================== -->
+  <!-- LANE 1 (TOP): ONLINE ANSWER SCORING (evaluate-answer)                 -->
+  <!-- ===================================================================== -->
+
+  <!-- Left Trigger Card: POST /ask & kb_ask (Sky Blue) -->
+  <g transform="translate(32, 112)">
+    <rect x="0" y="0" width="224" height="196" rx="16" fill="#DFF4FF" stroke="#59ADD9" stroke-width="2" />
+
+    <rect x="14" y="14" width="196" height="40" rx="10" fill="#FFFFFF" stroke="#59ADD9" stroke-width="2" />
+    <text x="112" y="39" text-anchor="middle" class="node-heading">POST /ask · kb_ask</text>
+
+    <rect x="14" y="68" width="196" height="48" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.8" />
+    <text x="26" y="89" class="prop-text">record_snapshot()</text>
+    <text x="26" y="106" class="sub-text">confidence = NULL</text>
+
+    <rect x="14" y="128" width="196" height="52" rx="8" fill="#A6EAFE" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="112" y="149" text-anchor="middle" class="badge-text">fire-and-forget</text>
+    <text x="112" y="167" text-anchor="middle" class="sub-text">user unblocked in &lt;1s</text>
+  </g>
+
+  <!-- Event Connector: kb/answer.produced -->
+  <line x1="256" y1="210" x2="412" y2="210" stroke="#4A3F28" stroke-width="2.2" stroke-dasharray="4,4" marker-end="url(#arrow-dotted)" />
+  <rect x="268" y="172" width="134" height="28" rx="7" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.8" />
+  <text x="335" y="191" text-anchor="middle" class="edge-label">answer.produced</text>
+
+  <!-- Center Inngest Function Card: evaluate-answer (Mint Green) -->
+  <g transform="translate(416, 112)">
+    <rect x="0" y="0" width="528" height="196" rx="16" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+
+    <rect x="16" y="14" width="496" height="40" rx="10" fill="#FFFFFF" stroke="#43C37E" stroke-width="2.2" />
+    <text x="32" y="39" class="node-heading">evaluate-answer</text>
+    <rect x="336" y="21" width="164" height="26" rx="6" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="418" y="38" text-anchor="middle" class="badge-text">5 durable steps</text>
+
+    <!-- 5 Step Pills in 2 rows -->
+    <rect x="16" y="68" width="156" height="50" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="26" y="89" class="prop-text">1. load-snapshot</text>
+    <text x="26" y="106" class="sub-text">Postgres row</text>
+
+    <rect x="184" y="68" width="164" height="50" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="194" y="89" class="prop-text">2. deterministic</text>
+    <text x="194" y="106" class="sub-text">0 USD · FM-1..FM-3</text>
+
+    <rect x="360" y="68" width="152" height="50" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="370" y="89" class="prop-text">3. faithfulness</text>
+    <text x="370" y="106" class="sub-text">PASS | FAIL (FM-4)</text>
+
+    <rect x="16" y="130" width="240" height="50" rx="8" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.8" />
+    <text x="28" y="151" class="prop-text">4. judge-disagreement</text>
+    <text x="28" y="168" class="sub-text">PASS | FAIL | N/A (FM-5)</text>
+
+    <rect x="268" y="130" width="244" height="50" rx="8" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.8" />
+    <text x="280" y="151" class="prop-text">5. persist-eval-scores</text>
+    <text x="280" y="168" class="sub-text">upsert + emit kb/answer.evaluated</text>
+  </g>
+
+  <!-- Arrow to Postgres Persistence -->
+  <line x1="944" y1="210" x2="1016" y2="210" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+
+  <!-- Right Storage Card: eval_results & snapshots (Soft Purple) -->
+  <g transform="translate(1020, 112)">
+    <rect x="0" y="0" width="228" height="196" rx="16" fill="#ECDDFF" stroke="#8A4EC0" stroke-width="2" />
+
+    <rect x="14" y="14" width="200" height="40" rx="10" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="2" />
+    <text x="114" y="39" text-anchor="middle" class="node-heading">Postgres Audit</text>
+
+    <rect x="14" y="68" width="200" height="50" rx="8" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.8" />
+    <text x="26" y="89" class="prop-text">eval_results</text>
+    <text x="26" y="106" class="sub-text">verdicts · critiques · FM-*</text>
+
+    <rect x="14" y="130" width="200" height="50" rx="8" fill="#E3C3FD" stroke="#8A4EC0" stroke-width="1.6" />
+    <text x="26" y="151" class="prop-text">snapshots.confidence</text>
+    <text x="26" y="168" class="sub-text">NULL -&gt; 1.0 | 0.5 | 0.0</text>
+  </g>
+
+
+  <!-- ===================================================================== -->
+  <!-- LANE 2 (BOTTOM): VARIANT EXPERIMENTS & FAILURE REPLAYS                -->
+  <!-- ===================================================================== -->
+
+  <!-- Left Trigger Card: POST /evals/run & failures (Warm Amber) -->
+  <g transform="translate(32, 344)">
+    <rect x="0" y="0" width="224" height="196" rx="16" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+
+    <rect x="14" y="14" width="196" height="40" rx="10" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2" />
+    <text x="112" y="39" text-anchor="middle" class="node-heading">POST /evals/run</text>
+
+    <rect x="14" y="68" width="196" height="48" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="26" y="89" class="prop-text">golden_benchmark.yaml</text>
+    <text x="26" y="106" class="sub-text">seed passages + claims</text>
+
+    <rect x="14" y="128" width="196" height="52" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="26" y="149" class="prop-text">failures table</text>
+    <text x="26" y="167" class="sub-text">Week 3 runtime crashes</text>
+  </g>
+
+  <!-- Event Connector: kb/eval.run -->
+  <line x1="256" y1="442" x2="412" y2="442" stroke="#4A3F28" stroke-width="2.2" stroke-dasharray="4,4" marker-end="url(#arrow-dotted)" />
+  <rect x="278" y="404" width="114" height="28" rx="7" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.8" />
+  <text x="335" y="423" text-anchor="middle" class="edge-label">kb/eval.run</text>
+
+  <!-- Center Inngest Function Card: run-eval-suite (Slate + Amber) -->
+  <g transform="translate(416, 344)">
+    <rect x="0" y="0" width="528" height="196" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+
+    <rect x="16" y="14" width="496" height="40" rx="10" fill="#FFFFFF" stroke="#EEC15E" stroke-width="2.2" />
+    <text x="32" y="39" class="node-heading">run-eval-suite</text>
+    <rect x="336" y="21" width="164" height="26" rx="6" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.5" />
+    <text x="418" y="38" text-anchor="middle" class="badge-text">7 durable steps</text>
+
+    <!-- Variant Steps -->
+    <rect x="16" y="68" width="156" height="50" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="26" y="89" class="prop-text">1. load-eval-cases</text>
+    <text x="26" y="106" class="sub-text">fixture + failures</text>
+
+    <rect x="184" y="68" width="164" height="50" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="194" y="89" class="prop-text">2..3. sparse · dense</text>
+    <text x="194" y="106" class="sub-text">BM25 vs pgvector</text>
+
+    <rect x="360" y="68" width="152" height="50" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="370" y="89" class="prop-text">4..5. 2way · 3way</text>
+    <text x="370" y="106" class="sub-text">RRF + Memgraph</text>
+
+    <rect x="16" y="130" width="240" height="50" rx="8" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="28" y="151" class="prop-text">6. verify-failure-replays</text>
+    <text x="28" y="168" class="sub-text">regression check</text>
+
+    <rect x="268" y="130" width="244" height="50" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.8" />
+    <text x="280" y="151" class="prop-text">7. persist-suite-summary</text>
+    <text x="280" y="168" class="sub-text">Recall@5 · MRR · Cross-Pub</text>
+  </g>
+
+  <!-- Arrow to eval_runs & MCP Report -->
+  <line x1="944" y1="442" x2="1016" y2="442" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+
+  <!-- Right Output Card: eval_runs & kb_eval_report (Soft Rose) -->
+  <g transform="translate(1020, 344)">
+    <rect x="0" y="0" width="228" height="196" rx="16" fill="#FCE7F3" stroke="#D9468F" stroke-width="2" />
+
+    <rect x="14" y="14" width="200" height="40" rx="10" fill="#FFFFFF" stroke="#D9468F" stroke-width="2" />
+    <text x="114" y="39" text-anchor="middle" class="node-heading">Fast Read (&lt;1s)</text>
+
+    <rect x="14" y="68" width="200" height="50" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.8" />
+    <text x="26" y="89" class="prop-text">eval_runs table</text>
+    <text x="26" y="106" class="sub-text">GET /evals/latest</text>
+
+    <rect x="14" y="130" width="200" height="50" rx="8" fill="#FBCFE8" stroke="#D9468F" stroke-width="1.6" />
+    <text x="26" y="151" class="prop-text">kb_eval_report</text>
+    <text x="26" y="168" class="sub-text">10th MCP tool (stdio)</text>
+  </g>
+
+</svg>
+

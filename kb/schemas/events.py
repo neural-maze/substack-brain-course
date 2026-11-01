@@ -21,6 +21,10 @@ CLAIMS_EXTRACTED = "kb/claims.extracted"
 ANSWER_PRODUCED = "kb/answer.produced"
 EVAL_RUN_REQUESTED = "kb/eval.run"
 ANSWER_EVALUATED = "kb/answer.evaluated"
+RESEARCH_REQUESTED = "kb/research.requested"
+RESEARCH_COMPLETED = "kb/research.completed"
+DIGEST_REQUESTED = "kb/digest.requested"
+DIGEST_PUBLISHED = "kb/digest.published"
 
 DiscoverySource = Literal["rss", "backfill", "manual", "poll"]
 
@@ -95,5 +99,44 @@ class AnswerEvaluated(BaseModel):
     faithfulness_verdict: str
     disagreement_verdict: str
     failure_codes: list[str]
+
+
+class ResearchRequested(BaseModel):
+    """POST /research or kb_research -> run-research-agent. Starts a bounded research loop."""
+
+    research_id: str
+    question: str
+    max_iterations: int | None = None
+    max_usd: float | None = None
+
+
+class ResearchCompleted(BaseModel):
+    """run-research-agent -> downstream telemetry. Summarizes a completed research run."""
+
+    research_id: str
+    status: str
+    iterations_used: int
+    total_cost_usd: float
+    confidence: float
+    failure_codes: list[str]
+
+
+class DigestRequested(BaseModel):
+    """POST /digests/run -> generate-weekly-digest. Generates a weekly digest on demand."""
+
+    lookback_days: int = 7
+    publication_slugs: list[str] | None = None
+
+
+class DigestPublished(BaseModel):
+    """generate-weekly-digest -> downstream telemetry. Summarizes a persisted weekly digest."""
+
+    digest_id: UUID
+    window_start: datetime
+    window_end: datetime
+    article_count: int
+    claim_count: int
+    disagreements_count: int
+
 
 

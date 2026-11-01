@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 580" width="100%" height="100%">
+  <defs>
+    <style>
+      .title-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 20px;
+        fill: #2C3560;
+      }
+      .node-heading {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        font-weight: 700;
+        font-size: 14.5px;
+        fill: #2C3560;
+      }
+      .prop-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        font-weight: 600;
+        font-size: 11.5px;
+        fill: #2C3560;
+      }
+      .sub-text {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-weight: 600;
+        font-size: 11.5px;
+        fill: #52587A;
+      }
+      .badge-text {
+        font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+        font-weight: 700;
+        font-size: 11px;
+        fill: #2C3560;
+      }
+    </style>
+
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#2C3560" />
+    </marker>
+    <marker id="arrow-dotted" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#4A3F28" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1280" height="580" rx="18" fill="#FFFFFF" />
+
+  <!-- ========================================== -->
+  <!-- TOP HEADER BANNER                          -->
+  <!-- ========================================== -->
+  <g id="header">
+    <rect x="24" y="18" width="1232" height="58" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+    <text x="52" y="54" class="title-text">13-Tool MCP Server &amp; Production Harness</text>
+
+    <rect x="756" y="31" width="154" height="32" rx="10" fill="#FCE7F3" stroke="#D9468F" stroke-width="1.5" />
+    <text x="833" y="51" text-anchor="middle" class="badge-text">9 Fast Reads (&lt;1s)</text>
+
+    <rect x="920" y="31" width="164" height="32" rx="10" fill="#DFF4FF" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="1002" y="51" text-anchor="middle" class="badge-text">4 Slow Writes (&lt;50ms)</text>
+
+    <rect x="1094" y="31" width="144" height="32" rx="10" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="1166" y="51" text-anchor="middle" class="badge-text">INNGEST_DEV=false</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- LEFT COLUMN: MCP CLIENTS (STDIO)           -->
+  <!-- ========================================== -->
+  <g id="left-mcp-clients">
+    <rect x="24" y="100" width="218" height="454" rx="16" fill="#E7E5ED" stroke="#3B4063" stroke-width="2" />
+    <text x="133" y="130" text-anchor="middle" class="node-heading">MCP Host Clients</text>
+    <text x="133" y="150" text-anchor="middle" class="sub-text">JSON-RPC over stdio</text>
+
+    <rect x="40" y="172" width="186" height="48" rx="10" fill="#FFFFFF" stroke="#3B4063" stroke-width="1.5" />
+    <text x="133" y="194" text-anchor="middle" class="prop-text">Claude Code / Desktop</text>
+    <text x="133" y="210" text-anchor="middle" class="sub-text">IDE &amp; terminal agent</text>
+
+    <rect x="40" y="232" width="186" height="48" rx="10" fill="#FFFFFF" stroke="#3B4063" stroke-width="1.5" />
+    <text x="133" y="254" text-anchor="middle" class="prop-text">Cursor / Windsurf</text>
+    <text x="133" y="270" text-anchor="middle" class="sub-text">mcpServers: substack-brain</text>
+
+    <rect x="40" y="292" width="186" height="48" rx="10" fill="#FFFFFF" stroke="#3B4063" stroke-width="1.5" />
+    <text x="133" y="314" text-anchor="middle" class="prop-text">MCP Inspector</text>
+    <text x="133" y="330" text-anchor="middle" class="sub-text">uv run kb-mcp</text>
+
+    <!-- Asymmetry Callout -->
+    <rect x="40" y="362" width="186" height="172" rx="12" fill="#FFFDF5" stroke="#EEC15E" stroke-width="1.8" />
+    <rect x="52" y="374" width="162" height="24" rx="6" fill="#FEE8B4" stroke="#EEC15E" stroke-width="1.2" />
+    <text x="133" y="390" text-anchor="middle" class="badge-text">Asymmetry Principle</text>
+    <text x="133" y="416" text-anchor="middle" class="sub-text">Never block stdio on</text>
+    <text x="133" y="432" text-anchor="middle" class="sub-text">multi-hop agent loops:</text>
+    <rect x="52" y="446" width="162" height="34" rx="6" fill="#DFF4FF" stroke="#59ADD9" stroke-width="1.2" />
+    <text x="133" y="467" text-anchor="middle" class="prop-text">1. kb_research (&lt;50ms)</text>
+    <rect x="52" y="488" width="162" height="34" rx="6" fill="#FCE7F3" stroke="#D9468F" stroke-width="1.2" />
+    <text x="133" y="509" text-anchor="middle" class="prop-text">2. kb_research_result</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- CENTER CONTAINER: 13-TOOL MCP SERVER       -->
+  <!-- ========================================== -->
+  <g id="center-mcp-server">
+    <rect x="286" y="100" width="584" height="454" rx="18" fill="#F8FAFC" stroke="#3B4063" stroke-width="2.5" />
+    <rect x="306" y="114" width="544" height="36" rx="10" fill="#E7E5ED" stroke="#3B4063" stroke-width="1.5" />
+    <text x="578" y="137" text-anchor="middle" class="node-heading">kb-mcp Server (kb/mcp/server.py · 13 Registered Tools)</text>
+
+    <!-- TOP HALF: SLOW WRITES (<50ms Event Dispatch) -->
+    <rect x="306" y="162" width="544" height="154" rx="14" fill="#DFF4FF" stroke="#59ADD9" stroke-width="2" />
+    <rect x="322" y="174" width="512" height="26" rx="6" fill="#A6EAFE" stroke="#59ADD9" stroke-width="1.4" />
+    <text x="578" y="191" text-anchor="middle" class="badge-text">Slow Write Tier (&lt;50ms) — Emits Inngest Event &amp; Returns Receipt</text>
+
+    <!-- Week 6 Highlighted Write Tool -->
+    <rect x="322" y="210" width="512" height="50" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+    <text x="578" y="231" text-anchor="middle" class="prop-text">★ NEW Week 6: kb_research(question, max_iterations, max_usd)</text>
+    <text x="578" y="249" text-anchor="middle" class="sub-text">Emits kb/research.requested -&gt; returns {research_id, event_id, trace_url, status: "queued"}</text>
+
+    <!-- Prior Write Tools -->
+    <rect x="322" y="268" width="164" height="36" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="404" y="290" text-anchor="middle" class="prop-text">kb_add_publication</text>
+
+    <rect x="496" y="268" width="164" height="36" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="578" y="290" text-anchor="middle" class="prop-text">kb_backfill</text>
+
+    <rect x="670" y="268" width="164" height="36" rx="8" fill="#FFFFFF" stroke="#59ADD9" stroke-width="1.5" />
+    <text x="752" y="290" text-anchor="middle" class="prop-text">kb_sync (kb/feed.poll)</text>
+
+    <!-- BOTTOM HALF: FAST READS (<1s Direct Query) -->
+    <rect x="306" y="330" width="544" height="208" rx="14" fill="#FCE7F3" stroke="#D9468F" stroke-width="2" />
+    <rect x="322" y="342" width="512" height="26" rx="6" fill="#FBCFE8" stroke="#D9468F" stroke-width="1.4" />
+    <text x="578" y="359" text-anchor="middle" class="badge-text">Fast Read Tier (&lt;1s) — Queries Postgres + Memgraph Directly</text>
+
+    <!-- Week 6 Highlighted Read Tools -->
+    <rect x="322" y="378" width="250" height="54" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+    <text x="447" y="399" text-anchor="middle" class="prop-text">★ NEW: kb_research_result(id)</text>
+    <text x="447" y="417" text-anchor="middle" class="sub-text">Reads research_runs + eval_summary</text>
+
+    <rect x="584" y="378" width="250" height="54" rx="8" fill="#FEE8B4" stroke="#EEC15E" stroke-width="2" />
+    <text x="709" y="399" text-anchor="middle" class="prop-text">★ NEW: kb_weekly_digest()</text>
+    <text x="709" y="417" text-anchor="middle" class="sub-text">Reads latest digest + topic hubs</text>
+
+    <!-- Prior Read Tools Grid -->
+    <rect x="322" y="442" width="122" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="383" y="464" text-anchor="middle" class="prop-text">kb_search</text>
+
+    <rect x="452" y="442" width="122" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="513" y="464" text-anchor="middle" class="prop-text">kb_ask</text>
+
+    <rect x="582" y="442" width="122" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="643" y="464" text-anchor="middle" class="prop-text">kb_sources</text>
+
+    <rect x="712" y="442" width="122" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="773" y="464" text-anchor="middle" class="prop-text">kb_eval_report</text>
+
+    <rect x="322" y="486" width="164" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="404" y="508" text-anchor="middle" class="prop-text">kb_list_publications</text>
+
+    <rect x="496" y="486" width="164" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="578" y="508" text-anchor="middle" class="prop-text">kb_job_status</text>
+
+    <rect x="670" y="486" width="164" height="36" rx="8" fill="#FFFFFF" stroke="#D9468F" stroke-width="1.5" />
+    <text x="752" y="508" text-anchor="middle" class="prop-text">kb_health</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- RIGHT COLUMN: PRODUCTION DEPLOYMENT STACK  -->
+  <!-- ========================================== -->
+  <g id="right-prod-stack">
+    <rect x="914" y="100" width="342" height="454" rx="18" fill="#F6FBF8" stroke="#43C37E" stroke-width="2.5" />
+    <rect x="932" y="114" width="306" height="36" rx="10" fill="#CBFDE5" stroke="#43C37E" stroke-width="1.5" />
+    <text x="1085" y="137" text-anchor="middle" class="node-heading">Production Stack (Compose)</text>
+
+    <!-- Inngest Cloud / Production Server -->
+    <rect x="932" y="162" width="306" height="118" rx="12" fill="#D8F8E4" stroke="#43C37E" stroke-width="2" />
+    <text x="1085" y="186" text-anchor="middle" class="prop-text">Inngest Production Engine</text>
+    <text x="1085" y="204" text-anchor="middle" class="sub-text">9 Registered Durable Functions</text>
+    <rect x="948" y="214" width="274" height="24" rx="6" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.2" />
+    <text x="1085" y="230" text-anchor="middle" class="badge-text">INNGEST_DEV=false (Signed Webhooks)</text>
+    <rect x="948" y="244" width="274" height="24" rx="6" fill="#FFFFFF" stroke="#43C37E" stroke-width="1.2" />
+    <text x="1085" y="260" text-anchor="middle" class="prop-text">INNGEST_SIGNING_KEY + EVENT_KEY</text>
+
+    <!-- kb-app Container (Dockerfile) -->
+    <rect x="932" y="294" width="306" height="106" rx="12" fill="#FFFDF5" stroke="#EEC15E" stroke-width="2" />
+    <text x="1085" y="318" text-anchor="middle" class="prop-text">kb-app Container (Dockerfile)</text>
+    <text x="1085" y="336" text-anchor="middle" class="sub-text">python:3.12-slim + uv --frozen --no-dev</text>
+    <rect x="948" y="346" width="274" height="42" rx="6" fill="#FFFFFF" stroke="#EEC15E" stroke-width="1.2" />
+    <text x="1085" y="364" text-anchor="middle" class="prop-text">alembic upgrade head &amp;&amp; uvicorn</text>
+    <text x="1085" y="380" text-anchor="middle" class="sub-text">Serves /api/inngest, /research, /digests</text>
+
+    <!-- Postgres + Memgraph Persistence -->
+    <rect x="932" y="414" width="306" height="124" rx="12" fill="#ECDDFF" stroke="#8A4EC0" stroke-width="2" />
+    <text x="1085" y="438" text-anchor="middle" class="prop-text">Stateful Data Tier (Healthchecked)</text>
+    <rect x="948" y="450" width="274" height="36" rx="6" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.2" />
+    <text x="1085" y="472" text-anchor="middle" class="prop-text">PostgreSQL 16 + pgvector (10 tables)</text>
+    <rect x="948" y="492" width="274" height="34" rx="6" fill="#FFFFFF" stroke="#8A4EC0" stroke-width="1.2" />
+    <text x="1085" y="513" text-anchor="middle" class="prop-text">Memgraph Ontology (5 nodes, 5 edges)</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- CONNECTORS & ARROWS                        -->
+  <!-- ========================================== -->
+  <g id="connectors">
+    <!-- MCP Clients <-> MCP Server -->
+    <path d="M 242 256 L 280 256" fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+    <path d="M 286 434 L 248 434" fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+
+    <!-- Slow Write Tier -> Inngest Production Engine -->
+    <path d="M 850 235 L 926 235" fill="none" stroke="#4A3F28" stroke-width="2.2" stroke-dasharray="4,4" marker-end="url(#arrow-dotted)" />
+
+    <!-- Inngest Engine <-> kb-app Container (/api/inngest) -->
+    <path d="M 1085 280 L 1085 290" fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+
+    <!-- kb-app Container -> Stateful Data Tier -->
+    <path d="M 1085 400 L 1085 410" fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+
+    <!-- Fast Read Tier -> Stateful Data Tier -->
+    <path d="M 850 475 L 926 475" fill="none" stroke="#2C3560" stroke-width="2.2" marker-end="url(#arrow-navy)" />
+  </g>
+</svg>
+

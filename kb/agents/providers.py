@@ -24,6 +24,10 @@ _anthropic_client: anthropic.AsyncAnthropic | None = None
 
 # Per-million-token pricing table (input_usd, output_usd)
 MODEL_PRICING_PER_MTOK: dict[str, tuple[float, float]] = {
+    "claude-haiku-5-5": (1.00, 5.00),
+    "claude-haiku-4-5": (1.00, 5.00),
+    "claude-haiku-4-5-20251001": (1.00, 5.00),
+    "claude-3-5-haiku-latest": (0.80, 4.00),
     "claude-sonnet-4-20250514": (3.00, 15.00),
     "claude-sonnet-4-5": (3.00, 15.00),
     "claude-sonnet-5-5": (3.00, 15.00),

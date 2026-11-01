@@ -16,12 +16,14 @@ from kb.db.models import (
     Claim,
     Cost,
     Cursor,
+    Digest,
     EvalResult,
     EvalRun,
     Failure,
     Job,
     Passage,
     Publication,
+    ResearchRun,
     Snapshot,
 )
 
@@ -888,6 +890,310 @@ async def get_latest_eval_report(
             else None
         ),
     }
+
+
+async def upsert_research_run(
+    session: AsyncSession,
+    *,
+    research_id: str,
+    event_id: str | None,
+    question: str,
+    status: str,
+    plan: list[str],
+    hops: list[dict[str, object]],
+    report_text: str | None,
+    citations: list[dict[str, object]],
+    retrieved: list[dict[str, object]],
+    eval_summary: dict[str, object],
+    confidence: float | None,
+    iterations_used: int,
+    total_cost_usd: float,
+    latency_ms: int,
+    completed_at: datetime | None,
+) -> str:
+    """Upsert a bounded research agent execution in `research_runs`
+    (sole writer: `run-research-agent`).
+    """
+    stmt = (
+        insert(ResearchRun)
+        .values(
+            research_id=research_id,
+            event_id=event_id,
+            question=question,
+            status=status,
+            plan=plan,
+            hops=hops,
+            report_text=report_text,
+            citations=citations,
+            retrieved=retrieved,
+            eval_summary=eval_summary,
+            confidence=confidence,
+            iterations_used=iterations_used,
+            total_cost_usd=total_cost_usd,
+            latency_ms=latency_ms,
+            completed_at=completed_at,
+        )
+        .on_conflict_do_update(
+            index_elements=[ResearchRun.research_id],
+            set_={
+                "event_id": event_id,
+                "question": question,
+                "status": status,
+                "plan": plan,
+                "hops": hops,
+                "report_text": report_text,
+                "citations": citations,
+                "retrieved": retrieved,
+                "eval_summary": eval_summary,
+                "confidence": confidence,
+                "iterations_used": iterations_used,
+                "total_cost_usd": total_cost_usd,
+                "latency_ms": latency_ms,
+                "completed_at": completed_at,
+            },
+        )
+        .returning(ResearchRun.research_id)
+    )
+    return (await session.execute(stmt)).scalar_one()
+
+
+async def get_research_run(
+    session: AsyncSession, research_id: str
+) -> dict[str, object] | None:
+    """Fetch a single `ResearchRun` row by `research_id` for `GET /research/{id}`
+    and `kb_research_result`.
+    """
+    row = (
+        await session.execute(
+            select(ResearchRun).where(ResearchRun.research_id == research_id)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    return {
+        "research_id": row.research_id,
+        "event_id": row.event_id,
+        "question": row.question,
+        "status": row.status,
+        "plan": list(row.plan or []),
+        "hops": list(row.hops or []),
+        "report": row.report_text,
+        "citations": list(row.citations or []),
+        "retrieved_count": len(row.retrieved or []),
+        "eval_summary": dict(row.eval_summary or {}),
+        "confidence": float(row.confidence) if row.confidence is not None else None,
+        "iterations_used": row.iterations_used,
+        "total_cost_usd": float(row.total_cost_usd),
+        "latency_ms": row.latency_ms,
+        "created_at": row.created_at.isoformat(),
+        "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+    }
+
+
+async def collect_weekly_digest_inputs(
+    session: AsyncSession,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    publication_slugs: list[str] | None = None,
+) -> dict[str, object]:
+    """Gather articles, active claims, and cross-publication topic overlaps
+    for the digest window.
+    """
+    art_stmt = (
+        select(Article, Publication)
+        .join(Publication, Publication.id == Article.publication_id)
+        .where(Article.published_at >= window_start, Article.published_at <= window_end)
+        .order_by(Article.published_at.desc())
+    )
+    if publication_slugs:
+        art_stmt = art_stmt.where(Publication.slug.in_(publication_slugs))
+
+    art_rows = (await session.execute(art_stmt)).all()
+    if not art_rows:
+        # Fallback to most recent articles in the KB so local digests are rich even if
+        # RSS feeds haven't published in the last 7 wall-clock days.
+        fallback_stmt = (
+            select(Article, Publication)
+            .join(Publication, Publication.id == Article.publication_id)
+            .order_by(Article.published_at.desc())
+            .limit(15)
+        )
+        if publication_slugs:
+            fallback_stmt = fallback_stmt.where(Publication.slug.in_(publication_slugs))
+        art_rows = (await session.execute(fallback_stmt)).all()
+
+    article_ids = [art.id for art, _ in art_rows]
+    articles_payload: list[dict[str, object]] = [
+        {
+            "article_id": str(art.id),
+            "canonical_id": art.canonical_id,
+            "title": art.title,
+            "author": art.author or pub.name,
+            "url": art.url,
+            "publication_slug": pub.slug,
+            "publication_name": pub.name,
+            "published_at": art.published_at.isoformat(),
+        }
+        for art, pub in art_rows
+    ]
+
+    claims_payload: list[dict[str, object]] = []
+    topic_map: dict[str, dict[str, object]] = {}
+
+    if article_ids:
+        claim_stmt = (
+            select(Claim, Article, Publication)
+            .join(Article, Article.id == Claim.article_id)
+            .join(Publication, Publication.id == Article.publication_id)
+            .where(Claim.article_id.in_(article_ids), Claim.valid_to.is_(None))
+            .order_by(Claim.confidence.desc())
+        )
+        claim_rows = (await session.execute(claim_stmt)).all()
+
+        # Also fetch one passage per article so citations have valid passage_ids
+        pass_stmt = (
+            select(Passage)
+            .where(Passage.article_id.in_(article_ids), Passage.valid_to.is_(None))
+            .order_by(Passage.chunk_index.asc())
+        )
+        pass_rows = list((await session.execute(pass_stmt)).scalars())
+        first_passage_by_article: dict[uuid.UUID, Passage] = {}
+        for p in pass_rows:
+            if p.article_id not in first_passage_by_article:
+                first_passage_by_article[p.article_id] = p
+
+        for claim, art, pub in claim_rows:
+            matched_passage = first_passage_by_article.get(art.id)
+            passage_id_str = str(matched_passage.id) if matched_passage else str(claim.id)
+            item: dict[str, object] = {
+                "passage_id": passage_id_str,
+                "claim_id": str(claim.id),
+                "claim_text": claim.text,
+                "claim_type": claim.claim_type,
+                "text": claim.quote_span,
+                "title": art.title,
+                "author": art.author or pub.name,
+                "url": art.url,
+                "publication_slug": pub.slug,
+                "publication_name": pub.name,
+                "published_at": art.published_at.isoformat(),
+                "topics": list(claim.entities or []),
+            }
+            claims_payload.append(item)
+
+            for ent in claim.entities or []:
+                if not isinstance(ent, dict) or "slug" not in ent:
+                    continue
+                slug = str(ent["slug"])
+                name = str(ent.get("name", slug))
+                entry = topic_map.setdefault(
+                    slug,
+                    {
+                        "slug": slug,
+                        "name": name,
+                        "publications": set(),
+                        "authors": set(),
+                        "claims": [],
+                    },
+                )
+                pubs_set = entry["publications"]
+                if isinstance(pubs_set, set):
+                    pubs_set.add(pub.slug)
+                authors_set = entry["authors"]
+                if isinstance(authors_set, set):
+                    authors_set.add(art.author or pub.name)
+                claims_list = entry["claims"]
+                if isinstance(claims_list, list):
+                    claims_list.append(item)
+
+    shared_topics: list[dict[str, object]] = []
+    for slug, info in topic_map.items():
+        pubs = sorted(info["publications"]) if isinstance(info["publications"], set) else []
+        authors = sorted(info["authors"]) if isinstance(info["authors"], set) else []
+        t_claims = info["claims"] if isinstance(info["claims"], list) else []
+        shared_topics.append(
+            {
+                "slug": slug,
+                "name": info["name"],
+                "publications": pubs,
+                "authors": authors,
+                "claim_count": len(t_claims),
+                "is_cross_publication": len(pubs) >= 2,
+            }
+        )
+    shared_topics.sort(
+        key=lambda t: (
+            -int(bool(t["is_cross_publication"])),
+            -int(str(t["claim_count"])),
+            str(t["slug"]),
+        )
+    )
+
+    return {
+        "articles": articles_payload,
+        "claims": claims_payload,
+        "topics": shared_topics,
+    }
+
+
+async def insert_digest(
+    session: AsyncSession,
+    *,
+    digest_id: uuid.UUID,
+    window_start: datetime,
+    window_end: datetime,
+    title: str,
+    summary_markdown: str,
+    citations: list[dict[str, object]],
+    stats: dict[str, object],
+) -> uuid.UUID:
+    """Persist a weekly digest row in `digests` (sole writer: `generate-weekly-digest`)."""
+    stmt = (
+        insert(Digest)
+        .values(
+            digest_id=digest_id,
+            window_start=window_start,
+            window_end=window_end,
+            title=title,
+            summary_markdown=summary_markdown,
+            citations=citations,
+            stats=stats,
+        )
+        .on_conflict_do_update(
+            index_elements=[Digest.digest_id],
+            set_={
+                "window_start": window_start,
+                "window_end": window_end,
+                "title": title,
+                "summary_markdown": summary_markdown,
+                "citations": citations,
+                "stats": stats,
+            },
+        )
+        .returning(Digest.digest_id)
+    )
+    return (await session.execute(stmt)).scalar_one()
+
+
+async def get_latest_digest(session: AsyncSession) -> dict[str, object] | None:
+    """Return the most recent weekly digest from `digests`."""
+    row = (
+        await session.execute(select(Digest).order_by(Digest.created_at.desc()).limit(1))
+    ).scalar_one_or_none()
+    if row is None:
+        return None
+    return {
+        "digest_id": str(row.digest_id),
+        "window_start": row.window_start.isoformat(),
+        "window_end": row.window_end.isoformat(),
+        "title": row.title,
+        "summary_markdown": row.summary_markdown,
+        "citations": list(row.citations or []),
+        "stats": dict(row.stats or {}),
+        "created_at": row.created_at.isoformat(),
+    }
+
 
 
 

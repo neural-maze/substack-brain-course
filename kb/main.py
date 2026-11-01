@@ -22,7 +22,9 @@ from pydantic import BaseModel
 from kb.config import settings
 from kb.db.queries import (
     get_job_status,
+    get_latest_digest,
     get_latest_eval_report,
+    get_research_run,
     get_source_provenance,
     upsert_publication,
 )
@@ -34,13 +36,17 @@ from kb.inngest_client import client
 from kb.retrieval import dense, hybrid, sparse
 from kb.schemas.events import (
     ARTICLE_DISCOVERED,
+    DIGEST_REQUESTED,
     EVAL_RUN_REQUESTED,
     PUBLICATION_ADDED,
+    RESEARCH_REQUESTED,
     ArticleDiscovered,
+    DigestRequested,
     EvalRunRequested,
     PublicationAdded,
+    ResearchRequested,
 )
-from kb.schemas.ids import canonical_id
+from kb.schemas.ids import canonical_id, research_id
 from kb.sources.allowlist import find_publication_for_url, load_publications
 
 app = FastAPI(title="The Substack Brain")
@@ -253,5 +259,81 @@ async def get_eval_report(
     """
     async with get_session() as session:
         return await get_latest_eval_report(session, limit=limit)
+
+
+class ResearchCreateRequest(BaseModel):
+    question: str
+    max_iterations: int | None = None
+    max_usd: float | None = None
+
+
+@app.post("/research")
+async def start_research(payload: ResearchCreateRequest) -> dict[str, Any]:
+    """Queue a bounded multi-hop research agent run (`run-research-agent`).
+
+    Slow work: emits `kb/research.requested` and returns `{research_id, event_id,
+    trace_url, status}` in <50ms. Poll `GET /research/{research_id}` for the report.
+    """
+    rid = research_id()
+    req = ResearchRequested(
+        research_id=rid,
+        question=payload.question,
+        max_iterations=payload.max_iterations,
+        max_usd=payload.max_usd,
+    )
+    event = inngest.Event(name=RESEARCH_REQUESTED, data=req.model_dump(mode="json"))
+    event_ids = await client.send(event)
+    event_id = event_ids[0]
+    return {
+        "research_id": rid,
+        "event_id": event_id,
+        "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
+        "status": "queued",
+    }
+
+
+@app.get("/research/{research_id_param}")
+async def get_research(research_id_param: str) -> dict[str, Any]:
+    """Fast read (<1s): return the bounded research agent run, hop trace, citations,
+    and evaluation summary from Postgres.
+    """
+    async with get_session() as session:
+        run_data = await get_research_run(session, research_id_param.strip())
+    if run_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No research run found for research_id={research_id_param!r}.",
+        )
+    return run_data
+
+
+@app.post("/digests/run")
+async def trigger_weekly_digest(payload: DigestRequested | None = None) -> dict[str, Any]:
+    """Trigger `generate-weekly-digest` on demand via Inngest.
+
+    Slow work: emits `kb/digest.requested` and returns an `{event_id, trace_url, status}`
+    handle in <50ms. Fetch the result via `GET /digests/latest`.
+    """
+    req = payload or DigestRequested(lookback_days=settings.digest_lookback_days)
+    event = inngest.Event(name=DIGEST_REQUESTED, data=req.model_dump(mode="json"))
+    event_ids = await client.send(event)
+    event_id = event_ids[0]
+    return {
+        "event_id": event_id,
+        "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
+        "lookback_days": req.lookback_days,
+        "status": "queued",
+    }
+
+
+@app.get("/digests/latest")
+async def get_weekly_digest() -> dict[str, Any]:
+    """Fast read (<1s): return the most recent weekly digest from Postgres."""
+    async with get_session() as session:
+        digest = await get_latest_digest(session)
+    if digest is None:
+        return {"status": "empty", "digest": None}
+    return digest
+
 
 

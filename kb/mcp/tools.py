@@ -20,7 +20,9 @@ from pydantic import Field
 from kb.config import settings
 from kb.db.queries import (
     get_job_status,
+    get_latest_digest,
     get_latest_eval_report,
+    get_research_run,
     get_source_provenance,
     list_publications_with_stats,
 )
@@ -29,7 +31,13 @@ from kb.functions.ask import ask_question
 from kb.health import check_health
 from kb.inngest_client import client
 from kb.retrieval import hybrid
-from kb.schemas.events import PUBLICATION_ADDED, PublicationAdded
+from kb.schemas.events import (
+    PUBLICATION_ADDED,
+    RESEARCH_REQUESTED,
+    PublicationAdded,
+    ResearchRequested,
+)
+from kb.schemas.ids import research_id
 from kb.sources.allowlist import load_publications
 
 
@@ -305,5 +313,99 @@ async def kb_eval_report(
     """
     async with get_session() as session:
         return await get_latest_eval_report(session, limit=limit)
+
+
+async def kb_research(
+    question: typing.Annotated[
+        str,
+        Field(
+            description=(
+                "Complex multi-hop or cross-publication engineering research question "
+                "to investigate asynchronously"
+            )
+        ),
+    ],
+    max_iterations: typing.Annotated[
+        int,
+        Field(
+            default=3,
+            ge=1,
+            le=5,
+            description="Max retrieval + reflection hops before synthesis (1-5)",
+        ),
+    ] = 3,
+    max_usd: typing.Annotated[
+        float,
+        Field(
+            default=0.25,
+            gt=0.0,
+            le=2.0,
+            description="Hard USD token cost budget for the research run",
+        ),
+    ] = 0.25,
+) -> dict[str, object]:
+    """Queue a bounded multi-hop research agent run (`run-research-agent`).
+
+    Slow write (<50ms): decomposes the question into sub-queries, runs iterative
+    3-way hybrid retrieval and coverage reflection up to `max_iterations` or `max_usd`,
+    synthesizes a cited report, and verifies it with Week 5's deterministic and binary
+    judges. Returns `{research_id, event_id, trace_url, status: "queued"}` immediately;
+    poll `kb_research_result(research_id)` to fetch the completed report.
+    """
+    rid = research_id()
+    req = ResearchRequested(
+        research_id=rid,
+        question=question,
+        max_iterations=max_iterations,
+        max_usd=max_usd,
+    )
+    event = inngest.Event(name=RESEARCH_REQUESTED, data=req.model_dump(mode="json"))
+    event_ids = await client.send(event)
+    event_id = event_ids[0]
+    return {
+        "research_id": rid,
+        "event_id": event_id,
+        "trace_url": f"{settings.inngest_base_url}/event/{event_id}",
+        "status": "queued",
+    }
+
+
+async def kb_research_result(
+    research_id: typing.Annotated[
+        str,
+        Field(description="The research_id returned by kb_research or POST /research"),
+    ],
+) -> dict[str, object]:
+    """Fetch the status, hop trace, cited report, and evaluation summary for a bounded research run.
+
+    Fast read (<1s): queries `research_runs` directly in Postgres without creating an
+    Inngest run.
+    """
+    async with get_session() as session:
+        run_data = await get_research_run(session, research_id.strip())
+    if run_data is None:
+        raise ToolError(
+            f"No research run found for research_id={research_id!r}. "
+            "Check that the ID was returned by kb_research and that Inngest has started the run."
+        )
+    return run_data
+
+
+async def kb_weekly_digest() -> dict[str, object]:
+    """Return the latest weekly newsletter digest, including cross-publication topic
+    threads, verified claims, and inline citations.
+
+    Fast read (<1s): queries the `digests` table in Postgres directly.
+    """
+    async with get_session() as session:
+        digest = await get_latest_digest(session)
+    if digest is None:
+        return {
+            "status": "empty",
+            "digest": None,
+            "message": "No weekly digest has been generated yet. Trigger POST /digests/run first.",
+        }
+    return digest
+
 
 

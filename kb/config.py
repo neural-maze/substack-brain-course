@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,23 +58,23 @@ class Settings(BaseSettings):
     # --- Retrieval & answers (week 2) ---
     rrf_k: int = 60
     retrieval_limit: int = 5
-    synthesis_model: str = "claude-sonnet-5-5"
+    synthesis_model: str = "claude-haiku-5-5"
     synthesis_max_tokens: int = 1024
 
     # --- Claim extraction & Memgraph graph (week 4) ---
     memgraph_uri: str = "bolt://localhost:7687"
     memgraph_user: str = ""
     memgraph_password: str = ""
-    extraction_model: str = "claude-sonnet-5-5"
+    extraction_model: str = "claude-haiku-5-5"
     extraction_max_tokens: int = 4096
     graph_retrieval_limit: int = 15
     concurrency_extract_claims: int = 2
-    # Anthropic Claude Sonnet pricing per million tokens (USD) for CostCaptureMiddleware
-    anthropic_input_price_per_million_tokens: float = 3.00
-    anthropic_output_price_per_million_tokens: float = 15.00
+    # Anthropic Claude pricing per million tokens (USD) for CostCaptureMiddleware
+    anthropic_input_price_per_million_tokens: float = 1.00
+    anthropic_output_price_per_million_tokens: float = 5.00
 
     # --- Evaluation suite & binary LLM judges (week 5) ---
-    eval_judge_model: str = "claude-sonnet-5-5"
+    eval_judge_model: str = "claude-haiku-5-5"
     eval_judge_max_tokens: int = 1024
     concurrency_eval_runs: int = 2
     eval_taxonomy_file: str = "evals/taxonomy.yaml"
@@ -81,6 +82,25 @@ class Settings(BaseSettings):
     eval_benchmark_file: str = "evals/golden_benchmark.yaml"
     eval_min_tpr: float = 0.90
     eval_min_tnr: float = 0.90
+
+    # --- Bounded research agent & weekly digest (week 6) ---
+    research_model: str = "claude-haiku-5-5"
+    research_max_tokens: int = 2048
+    research_max_iterations: int = 3
+    research_max_subqueries_per_hop: int = 3
+    research_passages_per_hop: int = 5
+    research_max_usd: float = 0.25
+    concurrency_research_runs: int = 2
+    digest_cron: str = "0 8 * * 1"
+    digest_lookback_days: int = 7
+    digest_max_tokens: int = 2048
+
+    @field_validator("digest_cron", mode="before")
+    @classmethod
+    def _strip_cron_quotes(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip().strip("\"'")
+        return v
 
 
 settings = Settings()

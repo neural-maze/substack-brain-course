@@ -267,4 +267,53 @@ class EvalRun(Base):
     )
 
 
+class ResearchRun(Base):
+    """One row per bounded research agent execution, written exclusively by
+    `run-research-agent` (Week 6).
+    """
+
+    __tablename__ = "research_runs"
+
+    research_id: Mapped[str] = mapped_column(String, primary_key=True)
+    event_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="running")
+    plan: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    hops: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False, default=list)
+    report_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    citations: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False, default=list)
+    retrieved: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False, default=list)
+    eval_summary: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, default=dict)
+    confidence: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    iterations_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), nullable=False, default=0.0)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Digest(Base):
+    """One row per weekly knowledge base briefing, written exclusively by
+    `generate-weekly-digest` (Week 6).
+    """
+
+    __tablename__ = "digests"
+
+    digest_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    summary_markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    citations: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False, default=list)
+    stats: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+
 

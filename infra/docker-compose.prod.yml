@@ -1,0 +1,60 @@
+name: substack-brain-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-substack_brain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-substack_brain}
+    volumes:
+      - kb_postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-substack_brain} -d ${POSTGRES_DB:-substack_brain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  memgraph:
+    image: memgraph/memgraph-mage:latest
+    restart: always
+    volumes:
+      - kb_memgraph_prod_data:/var/lib/memgraph
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kb-app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-substack_brain}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-substack_brain}
+      MEMGRAPH_URI: bolt://memgraph:7687
+      INNGEST_DEV: "false"
+      INNGEST_EVENT_KEY: ${INNGEST_EVENT_KEY:?Set INNGEST_EVENT_KEY for production Inngest}
+      INNGEST_SIGNING_KEY: ${INNGEST_SIGNING_KEY:?Set INNGEST_SIGNING_KEY for production Inngest}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LAB_PORT: "8000"
+    ports:
+      - "${LAB_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      memgraph:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  kb_postgres_prod_data:
+  kb_memgraph_prod_data:
+

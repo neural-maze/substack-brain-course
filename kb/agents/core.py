@@ -89,8 +89,50 @@ async def run_agent[T: BaseModel](
     return str(raw_output)
 
 
+async def run_agent_with_usage[T: BaseModel](
+    step: inngest.Step | Any,
+    agent: Agent[T],
+    user_input: str,
+    step_id: str,
+    article_id: UUID | None = None,
+) -> tuple[T | str, float]:
+    """Execute one LLM call inside `step.run(step_id, ...)` and return
+    `(parsed_output, est_usd)` so bounded agent loops can enforce USD budgets.
+    """
+
+    async def _call() -> dict[str, Any]:
+        return await call_llm(
+            system_prompt=agent.system_prompt,
+            user_input=user_input,
+            model=agent.model,
+            max_tokens=agent.max_tokens,
+            output_schema=agent.output_schema,
+            article_id=article_id,
+        )
+
+    step_result: Any = await step.run(step_id, _call)
+
+    est_usd = 0.0
+    if isinstance(step_result, dict):
+        usage = step_result.get("usage")
+        if isinstance(usage, dict) and "est_usd" in usage:
+            est_usd = float(usage["est_usd"])
+        raw_output = step_result.get("output", step_result)
+    else:
+        raw_output = step_result
+
+    if agent.output_schema is not None:
+        if isinstance(raw_output, agent.output_schema):
+            return raw_output, est_usd
+        if isinstance(raw_output, str):
+            return agent.output_schema.model_validate_json(raw_output), est_usd
+        return agent.output_schema.model_validate(raw_output), est_usd
+
+    return str(raw_output), est_usd
+
+
 async def bounded_loop[T: BaseModel](
-    step: inngest.Step,
+    step: inngest.Step | Any,
     agent: Agent[T],
     initial_input: str,
     *,
@@ -111,14 +153,18 @@ async def bounded_loop[T: BaseModel](
             break
 
         step_id = f"{step_prefix}-{iteration}"
-        result = await run_agent(
+        result, step_usd = await run_agent_with_usage(
             step=step,
             agent=agent,
             user_input=current_input,
             step_id=step_id,
             article_id=article_id,
         )
+        accumulated_usd += step_usd
         outputs.append(result)
+
+        if accumulated_usd >= max_usd:
+            break
 
         stop_decision = should_stop(result, iteration)
         if isinstance(stop_decision, Awaitable):

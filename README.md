@@ -23,6 +23,7 @@
 - [Week 3: Conditional freshness, temporal supersession and an MCP server](#week-3-conditional-freshness-temporal-supersession-and-an-mcp-server)
 - [Week 4: Structured claim extraction, Memgraph ontology and three-way RRF](#week-4-structured-claim-extraction-memgraph-ontology-and-three-way-rrf)
 - [Week 5: An evaluation suite built from your system's failures](#week-5-an-evaluation-suite-built-from-your-systems-failures)
+- [Week 6: Bounded research agent, weekly digest and production deploy](#week-6-bounded-research-agent-weekly-digest-and-production-deploy)
 - [Our Sponsor](#our-sponsor)
 - [Contributors](#contributors)
 
@@ -45,7 +46,7 @@ By the end of this course, you'll have a system capable of:
 * 📊 Measuring quality with **evals built from your own failures**, not vibes
 * 🤖 Running a bounded research agent and a weekly digest, deployed for real
 
-We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 5 are available now.**
+We start absurdly simple (one newsletter, five articles, one Postgres table) and add one hard problem every week. **Weeks 1 to 6 are available now.**
 
 Excited? Let's get started!
 
@@ -95,9 +96,9 @@ Here's what the weeks look like 👇
 | <div align="center">1</div> | ⚙️ A durable RSS importer, triggered over plain HTTP, plus a first look at sparse and dense retrieval | [Week 1](https://www.theneuralmaze.com/p/durable-harnesses-for-graph-powered) | [Week 1](docs/week-1.md) | Coming soon |
 | <div align="center">2</div> | 📚 Backfilling three newsletters with concurrency, throttling and priority, hybrid retrieval, a first LLM answer with citations | [Week 2](https://www.theneuralmaze.com/p/the-ai-engineers-guide-to-scaling) | [Week 2](docs/week-2.md) | Coming soon |
 | <div align="center">3</div> | 🔄 A conditional freshness poller, article edits that keep citation history, a failures dataset and an MCP server | [Week 3](https://theneuralmaze.substack.com/p/temporal-versioning-for-production) | [Week 3](docs/week-3.md) | Coming soon |
-| <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph, quote-span guardrail, 3-way RRF fusion and `kb_sources` | Coming soon | [Week 4](docs/week-4.md) | Coming soon |
-| <div align="center">5</div> | 📊 An evaluation suite built from your system's failures: open/axial coding, deterministic guardrails, TPR/TNR calibrated binary judges, and Inngest variant experiments | Coming soon | [Week 5](docs/week-5.md) | Coming soon |
-| <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | Coming soon | Coming soon |
+| <div align="center">4</div> | 🕸️ Claim extraction into a Memgraph graph, quote-span guardrail, 3-way RRF fusion and `kb_sources` | [Week 4](https://theneuralmaze.substack.com/p/knowledge-graphs-for-production-rag) | [Week 4](docs/week-4.md) | Coming soon |
+| <div align="center">5</div> | 📊 An evaluation suite built from your system's failures: open/axial coding, deterministic guardrails, TPR/TNR calibrated binary judges, and Inngest variant experiments | [Week 5](https://theneuralmaze.substack.com/p/error-analysis-for-agent-products) | [Week 5](docs/week-5.md) | Coming soon |
+| <div align="center">6</div> | 🤖 A bounded research agent, a weekly digest and a production deploy | Coming soon | [Week 6](docs/week-6.md) | Coming soon |
 
 ---
 
@@ -150,7 +151,7 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
 - `publications.yaml`: the allowlist of feeds the pipeline may ingest
 - `alembic/`: database migrations
 - `infra/docker-compose.yml`: Postgres (pgvector), Adminer, Inngest dev server, Memgraph, Memgraph Lab
-- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`, `docs/week-4.md`, `docs/week-5.md`: the step-by-step guides
+- `docs/week-1.md`, `docs/week-2.md`, `docs/week-3.md`, `docs/week-4.md`, `docs/week-5.md`, `docs/week-6.md`: the step-by-step guides
 - `scripts/replay_backfill.py` & `scripts/calibrate_judges.py`: replay verifier and TPR/TNR binary judge calibration CLI
 - `tests/`: the unit tests, which need no Docker or API keys
 - `tests/integration/`: tests that need the stack from `make start` running (they are skipped otherwise)
@@ -362,6 +363,40 @@ make nuke      # destructive: reset, plus kills a stray app process on the port
    ```
 
 6. 🧪 **Run the tests** with `make check`. The Week 5 unit tests live in [`tests/unit/test_deterministic_evals.py`](tests/unit/test_deterministic_evals.py), [`tests/unit/test_judge_calibration.py`](tests/unit/test_judge_calibration.py), and [`tests/test_week5.py`](tests/test_week5.py); integration tests live in [`tests/integration/test_evals_pipeline.py`](tests/integration/test_evals_pipeline.py).
+
+---
+
+## Week 6: Bounded research agent, weekly digest and production deploy
+
+<p align="center">
+    <a href="static/week_6_research_agent.svg"><img src="static/week_6_research_agent.svg" alt="The Week 6 Bounded Research Agent: run-research-agent" width="750"></a>
+</p>
+
+**Goal**: Run a multi-hop research agent (`run-research-agent`) bounded by hard iteration, USD cost, and convergence caps, evaluate its reports with Week 5's deterministic and binary judges, publish an automated weekly newsletter digest (`generate-weekly-digest`), and package the stack for production deployment.
+
+### Steps:
+
+1. 📖 **Read the guide**: [`docs/week-6.md`](docs/week-6.md) walks through the 3 research agent roles (`QueryPlannerAgent`, `CoverageCriticAgent`, `ResearchSynthesizerAgent`), the 3 termination guardrails (`max_iterations`, `max_usd`, and zero-new-passages convergence), the weekly digest cron workflow, the 3 new MCP tools (`kb_research`, `kb_research_result`, `kb_weekly_digest`), and the production `Dockerfile` + `infra/docker-compose.prod.yml`.
+2. 🚀 **Start the system** with `make start`. It applies the Week 6 migration (`research_runs` and `digests` tables).
+3. 🤖 **Launch a bounded research agent run**:
+
+   ```bash
+   curl -X POST localhost:8000/research -H "Content-Type: application/json" \
+     -d '{"question": "How do durable execution engines, hybrid RRF retrieval, and knowledge graphs work together in production AI systems?", "max_iterations": 3, "max_usd": 0.25}'
+
+   curl localhost:8000/research/<research_id>
+   ```
+
+4. 📰 **Trigger and read the weekly digest**:
+
+   ```bash
+   curl -X POST localhost:8000/digests/run -H "Content-Type: application/json" \
+     -d '{"lookback_days": 7}'
+
+   curl localhost:8000/digests/latest
+   ```
+
+5. 🧪 **Run the tests** with `make check`. The Week 6 unit tests live in [`tests/unit/test_research_agent.py`](tests/unit/test_research_agent.py) and [`tests/test_week6.py`](tests/test_week6.py).
 
 ---
 

@@ -46,6 +46,9 @@ async def test_lists_all_eight_week_three_tools() -> None:
         "kb_sync",
         "kb_sources",
         "kb_eval_report",
+        "kb_research",
+        "kb_research_result",
+        "kb_weekly_digest",
     }
 
 

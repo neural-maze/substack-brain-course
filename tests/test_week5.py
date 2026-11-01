@@ -50,7 +50,7 @@ def test_taxonomy_yaml_defines_all_six_axial_failure_modes() -> None:
 def test_mcp_server_registers_kb_eval_report_as_tenth_tool() -> None:
     tools_dict = mcp._tool_manager._tools
     assert "kb_eval_report" in tools_dict
-    assert len(tools_dict) == 10
+    assert len(tools_dict) >= 10
 
 
 def test_week5_event_schemas() -> None:

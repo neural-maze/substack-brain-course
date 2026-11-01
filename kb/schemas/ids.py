@@ -52,6 +52,11 @@ def snapshot_id() -> str:
     return f"snap_{secrets.token_urlsafe(9)}"
 
 
+def research_id() -> str:
+    """`res_<12 url-safe chars>`: the id of one bounded research agent run (`POST /research`)."""
+    return f"res_{secrets.token_urlsafe(9)}"
+
+
 def claim_id(
     article_id: uuid.UUID | str,
     content_hash: str,

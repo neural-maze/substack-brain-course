@@ -202,25 +202,47 @@ For production deployment, Week 6 ships two artifacts:
    - Runs `postgres`, `memgraph`, and `kb-app` with `restart: always` and container health checks.
    - Sets `INNGEST_DEV=false` (which flips `client = inngest.Inngest(..., is_production=not settings.inngest_dev)` in [`kb/inngest_client.py`](../kb/inngest_client.py) into production signature-verification mode) and requires `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY`.
 
-### Deploying to production
+### Running with `make start`: Local Inngest Dev Server vs. Inngest Cloud
 
-1. Set your production secrets in `.env` (or your cloud platform's environment settings):
+`make start` in [`Makefile`](../Makefile) automatically inspects `INNGEST_DEV` in your `.env` and boots the matching mode:
+
+#### Mode 1 — Local Inngest Dev Server (`INNGEST_DEV=1`, Default)
+1. In `.env`:
+   ```ini
+   INNGEST_DEV=1
+   INNGEST_BASE_URL=http://localhost:8288
+   ```
+2. Run:
    ```bash
-   POSTGRES_PASSWORD=<strong-random-password>
-   OPENAI_API_KEY=sk-...
-   ANTHROPIC_API_KEY=sk-ant-...
-   INNGEST_DEV=false
+   make start
+   ```
+   Starts `postgres`, `adminer`, `inngest-dev` (`http://localhost:8288`), `memgraph`, and `memgraph-lab`, runs `alembic upgrade head`, and starts `uvicorn kb.main:app --reload --port 8000`. The local `inngest-dev` container auto-discovers `http://host.docker.internal:8000/api/inngest`.
+
+#### Mode 2 — Inngest Cloud with `make start` (`INNGEST_DEV=0`, Zero Tunnels via `inngest.connect`)
+1. In the [Inngest Cloud Dashboard](https://app.inngest.com):
+   - Copy your **Event Key** from **Manage $\rightarrow$ Keys $\rightarrow$ Event Keys**.
+   - Copy your **Signing Key** (`signkey-prod-...`) from **Manage $\rightarrow$ Keys $\rightarrow$ Signing Key**.
+2. In `.env`:
+   ```ini
+   INNGEST_DEV=0
+   INNGEST_BASE_URL=https://api.inngest.com
    INNGEST_EVENT_KEY=<your-inngest-cloud-event-key>
-   INNGEST_SIGNING_KEY=<your-inngest-cloud-signing-key>
+   INNGEST_SIGNING_KEY=signkey-prod-<your-inngest-cloud-signing-key>
    ```
-2. Build and launch the production stack:
+3. Run:
    ```bash
-   docker compose -f infra/docker-compose.prod.yml --env-file .env up -d --build
+   make start
    ```
-3. In the [Inngest Cloud Dashboard](https://app.inngest.com) (or your self-hosted `inngest start` instance), sync your app URL:
-   ```
-   https://<your-domain>/api/inngest
-   ```
+   - `make start` detects `INNGEST_DEV=0`, skips/stops the local `inngest-dev` container, starts `postgres`, `adminer`, `memgraph`, and `memgraph-lab`, and launches FastAPI.
+   - On startup, FastAPI's `_lifespan` in [`kb/main.py`](../kb/main.py) automatically establishes an **outbound WebSocket connection (`inngest.connect`)** directly to Inngest Cloud using your `INNGEST_SIGNING_KEY`.
+   - **No `ngrok`, no `cloudflared`, and no manual URL syncing are needed**: your `substack-brain` app and all 9 durable functions appear automatically under **Workflow $\rightarrow$ Apps** in Inngest Cloud.
+
+#### Mode 3 — Full Containerized Production Stack (`infra/docker-compose.prod.yml`)
+When deploying to a cloud VM (EC2, DigitalOcean, Hetzner, Railway, etc.) where FastAPI itself runs inside Docker:
+```bash
+docker compose -f infra/docker-compose.prod.yml --env-file .env up -d --build
+```
+Then sync `https://<your-domain>/api/inngest` in the Inngest Cloud dashboard.
    Inngest registers all 9 durable functions (`backfill-publication`, `ingest-article`, `extract-claims`, `poll-feeds`, `handle-function-failed`, `evaluate-answer`, `run-eval-suite`, `run-research-agent`, and `generate-weekly-digest`) along with their concurrency limits, throttles, priorities, and cron schedules (`poll-feeds` every 5 minutes; `generate-weekly-digest` every Monday at 08:00 UTC).
 
 ---
@@ -238,15 +260,3 @@ Run the full lint, typecheck, and test suite across Weeks 1–6:
 ```bash
 make check
 ```
-
----
-
-## Verification checklist
-
-- [ ] `make check` passes (`ruff check .`, `mypy`, `pytest`).
-- [ ] Database migration `b8d2e4f6a1c3_week_6_research_and_digest_tables.py` creates `research_runs` and `digests`.
-- [ ] `bounded_loop` and `run-research-agent` enforce `max_iterations`, `max_usd`, and zero-new-passages convergence.
-- [ ] `POST /research` and `kb_research` emit `kb/research.requested` and return a `res_...` handle in `<50ms`; `GET /research/{id}` and `kb_research_result` return the hop trace, cited report, and Week 5 evaluation summary.
-- [ ] `generate-weekly-digest` triggers on both `0 8 * * 1` cron and `kb/digest.requested`, validates inline citations with `run_deterministic_checks`, and writes to `digests`.
-- [ ] `Dockerfile` and `infra/docker-compose.prod.yml` package the full stack with `INNGEST_DEV=false` for production deployment.
-

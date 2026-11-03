@@ -24,9 +24,19 @@ async def check_health() -> dict[str, object]:
         checks["database"] = f"error: {exc}"
 
     try:
-        async with httpx.AsyncClient(timeout=3.0) as http_client:
-            await http_client.get(settings.inngest_base_url)
-        checks["inngest"] = "ok"
+        if not settings.inngest_dev and (
+            not settings.inngest_event_key or not settings.inngest_signing_key
+        ):
+            checks["inngest"] = (
+                "error: INNGEST_DEV=0 requires INNGEST_EVENT_KEY and INNGEST_SIGNING_KEY in .env"
+            )
+        else:
+            headers: dict[str, str] = {}
+            if settings.inngest_signing_key:
+                headers["Authorization"] = f"Bearer {settings.inngest_signing_key}"
+            async with httpx.AsyncClient(timeout=3.0) as http_client:
+                await http_client.get(settings.inngest_base_url, headers=headers)
+            checks["inngest"] = "ok"
     except httpx.HTTPError as exc:
         checks["inngest"] = f"error: {exc}"
 

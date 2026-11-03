@@ -184,10 +184,13 @@ async def kb_job_status(
     run_status: str | None = None
     run_output: object = None
     steps_completed: int = 0
+    headers: dict[str, str] = {}
+    if settings.inngest_signing_key:
+        headers["Authorization"] = f"Bearer {settings.inngest_signing_key}"
     try:
         async with httpx.AsyncClient(timeout=5.0) as http_client:
             runs_url = f"{settings.inngest_base_url}/v1/events/{event_id}/runs"
-            response = await http_client.get(runs_url)
+            response = await http_client.get(runs_url, headers=headers)
     except httpx.HTTPError as exc:
         raise ToolError(
             f"Could not reach the Inngest Dev Server at {settings.inngest_base_url}: {exc}"

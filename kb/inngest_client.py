@@ -70,5 +70,9 @@ class CostCaptureMiddleware(inngest.Middleware):
 client = inngest.Inngest(
     app_id="substack-brain",
     is_production=not settings.inngest_dev,
+    api_base_url="https://api.inngest.com" if not settings.inngest_dev else None,
+    event_api_base_url="https://inn.gs" if not settings.inngest_dev else None,
+    event_key=settings.inngest_event_key or None,
+    signing_key=settings.inngest_signing_key or None,
     middleware=[CostCaptureMiddleware],
 )

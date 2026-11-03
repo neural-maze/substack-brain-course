@@ -9,7 +9,11 @@ Postgres directly, because someone is waiting for them.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import logging
 import uuid
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -49,7 +53,41 @@ from kb.schemas.events import (
 from kb.schemas.ids import canonical_id, research_id
 from kb.sources.allowlist import find_publication_for_url, load_publications
 
-app = FastAPI(title="The Substack Brain")
+
+@contextlib.asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """When running against Inngest Cloud (`INNGEST_DEV=0`), establish an outbound
+    WebSocket worker connection (`inngest.connect`) so Inngest Cloud can sync and
+    invoke all 9 functions without needing ngrok, cloudflared, or public ingress.
+    """
+    conn: Any = None
+    connect_task: asyncio.Task[None] | None = None
+    if not settings.inngest_dev and settings.inngest_signing_key:
+        from inngest.connect import ConnectionState, connect
+
+        logger = logging.getLogger("uvicorn.error")
+        conn = connect([(client, list(FUNCTIONS))], shutdown_signals=[])
+        connect_task = asyncio.create_task(conn.start())
+
+        async def _log_when_active() -> None:
+            await conn.wait_for_state(ConnectionState.ACTIVE)
+            logger.info(
+                "Inngest Cloud Connect active (app=%s, functions=%d)",
+                client.app_id,
+                len(FUNCTIONS),
+            )
+
+        asyncio.create_task(_log_when_active())
+    try:
+        yield
+    finally:
+        if conn is not None:
+            await conn.close(wait=True)
+        if connect_task is not None and not connect_task.done():
+            connect_task.cancel()
+
+
+app = FastAPI(title="The Substack Brain", lifespan=_lifespan)
 
 inngest.fast_api.serve(app, client, FUNCTIONS)
 
@@ -138,10 +176,14 @@ async def job_status(event_id: str) -> dict[str, Any]:
 
     run_status: str | None = None
     run_output: object = None
+    headers: dict[str, str] = {}
+    if settings.inngest_signing_key:
+        headers["Authorization"] = f"Bearer {settings.inngest_signing_key}"
     async with httpx.AsyncClient(timeout=5.0) as http_client:
         try:
             response = await http_client.get(
-                f"{settings.inngest_base_url}/v1/events/{event_id}/runs"
+                f"{settings.inngest_base_url}/v1/events/{event_id}/runs",
+                headers=headers,
             )
         except httpx.HTTPError as exc:
             detail = f"Could not reach the Inngest Dev Server at {settings.inngest_base_url}: {exc}"

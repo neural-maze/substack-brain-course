@@ -8,7 +8,14 @@ REPO_DIR := $(shell pwd)
 LAB_PORT ?= 8000
 
 start:
-	$(COMPOSE) up -d
+	@if [ "$(INNGEST_DEV)" = "0" ] || [ "$(INNGEST_DEV)" = "false" ] || [ "$(INNGEST_DEV)" = "False" ]; then \
+		echo "Starting in Inngest Cloud mode (INNGEST_DEV=$(INNGEST_DEV)) — skipping local inngest-dev container..."; \
+		$(COMPOSE) rm -sf inngest-dev >/dev/null 2>&1 || true; \
+		$(COMPOSE) up -d postgres adminer memgraph memgraph-lab; \
+	else \
+		echo "Starting in Local Inngest Dev Server mode (http://localhost:8288)..."; \
+		$(COMPOSE) up -d; \
+	fi
 	@echo "Waiting for postgres to report healthy..."
 	@until [ "$$($(COMPOSE) ps -q postgres | xargs docker inspect -f '{{.State.Health.Status}}')" = "healthy" ]; do \
 		sleep 1; \

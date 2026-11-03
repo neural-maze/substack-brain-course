@@ -12,7 +12,7 @@ dependencies = [
     "fastapi==0.141.1",
     "feedparser==6.0.14",
     "httpx==0.28.1",
-    "inngest==0.5.19",
+    "inngest[connect]==0.5.19",
     "mcp>=1.0.0",
     "neo4j>=5.20.0",
     "openai==3.16.2",

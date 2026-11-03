@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     )
     inngest_dev: bool = True
     inngest_base_url: str = "http://localhost:8288"
+    inngest_event_key: str = ""
+    inngest_signing_key: str = ""
     lab_port: int = 8000
 
     # --- Fetching ---
@@ -101,6 +103,12 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v.strip().strip("\"'")
         return v
+
+    @model_validator(mode="after")
+    def _resolve_inngest_cloud_base_url(self) -> Settings:
+        if not self.inngest_dev and "localhost:8288" in self.inngest_base_url:
+            self.inngest_base_url = "https://api.inngest.com"
+        return self
 
 
 settings = Settings()
